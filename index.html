@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>写真セレクトサービス - スタジオ管理画面</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📸 写真セレクトサービス</h1>
+            <p class="subtitle">スタジオ管理画面</p>
+        </header>
+
+        <main>
+            <section class="upload-section">
+                <h2>新しいギャラリーを作成</h2>
+                <div class="form-group">
+                    <label for="galleryName">ギャラリー名（お客様名）</label>
+                    <input type="text" id="galleryName" placeholder="例：田中様 七五三撮影" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="galleryPassword">パスワード（任意）</label>
+                    <input type="text" id="galleryPassword" placeholder="お客様用のパスワード">
+                </div>
+
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <p>写真をドラッグ&ドロップ</p>
+                    <p class="upload-hint">または</p>
+                    <label for="fileInput" class="btn btn-primary">ファイルを選択</label>
+                    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+                </div>
+
+                <div id="previewArea" class="preview-area"></div>
+
+                <button id="createGallery" class="btn btn-success btn-large" disabled>
+                    ギャラリーを作成
+                </button>
+            </section>
+
+            <section class="gallery-list-section">
+                <h2>既存のギャラリー</h2>
+                <div id="galleryList" class="gallery-list">
+                    <p class="empty-message">まだギャラリーがありません</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/studio.js"></script>
+</body>
+</html>
