@@ -1,12 +1,14 @@
-// お客様向け選択画面のロジック
+// お客様向け選択画面のロジック（Supabase対応版）
 let currentGallery = null;
+let currentPhotos = [];
+let selectedPhotoIds = new Set();
 let currentPhotoIndex = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeClient();
 });
 
-function initializeClient() {
+async function initializeClient() {
     const urlParams = new URLSearchParams(window.location.search);
     const galleryId = urlParams.get('gallery');
 
@@ -15,20 +17,26 @@ function initializeClient() {
         return;
     }
 
-    const gallery = photoStorage.getGallery(galleryId);
+    try {
+        // ギャラリー情報を取得
+        const gallery = await supabaseStorage.getGallery(galleryId);
 
-    if (!gallery) {
-        document.body.innerHTML = '<div style="text-align: center; padding: 50px;"><h1>ギャラリーが見つかりません</h1><p>このギャラリーは削除されたか、存在しません。</p></div>';
-        return;
-    }
+        if (!gallery) {
+            document.body.innerHTML = '<div style="text-align: center; padding: 50px;"><h1>ギャラリーが見つかりません</h1><p>このギャラリーは削除されたか、存在しません。</p></div>';
+            return;
+        }
 
-    currentGallery = gallery;
+        currentGallery = gallery;
 
-    // パスワード確認
-    if (gallery.password) {
-        setupPasswordAuth();
-    } else {
-        showGallery();
+        // パスワード確認
+        if (gallery.password_hash) {
+            setupPasswordAuth();
+        } else {
+            await showGallery();
+        }
+    } catch (error) {
+        console.error('ギャラリー読み込みエラー:', error);
+        document.body.innerHTML = '<div style="text-align: center; padding: 50px;"><h1>エラー</h1><p>ギャラリーの読み込みに失敗しました。</p></div>';
     }
 }
 
@@ -38,12 +46,13 @@ function setupPasswordAuth() {
     const passwordInput = document.getElementById('passwordInput');
     const authError = document.getElementById('authError');
 
-    authButton.addEventListener('click', () => {
+    authButton.addEventListener('click', async () => {
         const enteredPassword = passwordInput.value;
 
-        if (enteredPassword === currentGallery.password) {
+        // パスワード照合（簡易版：ハッシュ化せず直接比較）
+        if (enteredPassword === currentGallery.password_hash) {
             authSection.style.display = 'none';
-            showGallery();
+            await showGallery();
         } else {
             authError.textContent = 'パスワードが正しくありません';
             authError.style.display = 'block';
@@ -59,32 +68,45 @@ function setupPasswordAuth() {
     });
 }
 
-function showGallery() {
-    document.getElementById('mainContent').style.display = 'block';
-    document.getElementById('galleryTitle').textContent = currentGallery.name;
+async function showGallery() {
+    try {
+        // 写真一覧を取得
+        currentPhotos = await supabaseStorage.getGalleryPhotos(currentGallery.id);
 
-    updatePhotoGrid();
-    updateSelectionCount();
+        // 選択情報を取得
+        const selectedIds = await supabaseStorage.getSelections(currentGallery.id);
+        selectedPhotoIds = new Set(selectedIds);
 
-    // イベントリスナー
-    document.getElementById('downloadSelection').addEventListener('click', downloadSelectedPhotos);
-    document.getElementById('submitSelection').addEventListener('click', submitSelection);
+        document.getElementById('mainContent').style.display = 'block';
+        document.getElementById('galleryTitle').textContent = currentGallery.name;
 
-    // ライトボックスの設定
-    setupLightbox();
+        updatePhotoGrid();
+        updateSelectionCount();
+
+        // イベントリスナー
+        document.getElementById('downloadSelection').addEventListener('click', downloadSelectedPhotos);
+        document.getElementById('submitSelection').addEventListener('click', submitSelection);
+
+        // ライトボックスの設定
+        setupLightbox();
+    } catch (error) {
+        console.error('ギャラリー表示エラー:', error);
+        alert('ギャラリーの表示中にエラーが発生しました。');
+    }
 }
 
 function updatePhotoGrid() {
     const photoGrid = document.getElementById('photoGrid');
     photoGrid.innerHTML = '';
 
-    currentGallery.photos.forEach((photo, index) => {
+    currentPhotos.forEach((photo, index) => {
         const item = document.createElement('div');
-        item.className = 'photo-item' + (photo.selected ? ' selected' : '');
+        item.className = 'photo-item' + (selectedPhotoIds.has(photo.id) ? ' selected' : '');
 
         const img = document.createElement('img');
-        img.src = photo.data;
-        img.alt = `Photo ${index + 1}`;
+        img.src = photo.url;
+        img.alt = photo.file_name;
+        img.loading = 'lazy';
 
         item.appendChild(img);
 
@@ -109,33 +131,43 @@ function updatePhotoGrid() {
     });
 }
 
-function togglePhotoSelection(index) {
+async function togglePhotoSelection(index) {
     const MAX_SELECTIONS = 30;
-    const photo = currentGallery.photos[index];
-    const selectedCount = currentGallery.photos.filter(p => p.selected).length;
+    const photo = currentPhotos[index];
+    const isCurrentlySelected = selectedPhotoIds.has(photo.id);
 
     // 選択する場合（現在未選択 → 選択）
-    if (!photo.selected) {
-        if (selectedCount >= MAX_SELECTIONS) {
+    if (!isCurrentlySelected) {
+        if (selectedPhotoIds.size >= MAX_SELECTIONS) {
             alert(`最大${MAX_SELECTIONS}枚までしか選択できません。\n他の写真を選択する場合は、先に選択済みの写真を解除してください。`);
             return;
         }
     }
 
-    // 選択を切り替え
-    photo.selected = !photo.selected;
-    updatePhotoGrid();
-    updateSelectionCount();
+    try {
+        // Supabaseに保存
+        if (isCurrentlySelected) {
+            await supabaseStorage.removeSelection(currentGallery.id, photo.id);
+            selectedPhotoIds.delete(photo.id);
+        } else {
+            await supabaseStorage.saveSelection(currentGallery.id, photo.id);
+            selectedPhotoIds.add(photo.id);
+        }
+
+        updatePhotoGrid();
+        updateSelectionCount();
+    } catch (error) {
+        console.error('選択の切り替えエラー:', error);
+        alert('選択の保存中にエラーが発生しました。');
+    }
 }
 
 function updateSelectionCount() {
-    const selectedCount = currentGallery.photos.filter(p => p.selected).length;
-    document.getElementById('selectedCount').textContent = selectedCount;
-    document.getElementById('totalCount').textContent = currentGallery.photos.length;
+    document.getElementById('selectedCount').textContent = selectedPhotoIds.size;
 }
 
 async function downloadSelectedPhotos() {
-    const selectedPhotos = currentGallery.photos.filter(p => p.selected);
+    const selectedPhotos = currentPhotos.filter(p => selectedPhotoIds.has(p.id));
 
     if (selectedPhotos.length === 0) {
         alert('写真が選択されていません。\nダウンロードする写真を選択してください。');
@@ -152,20 +184,30 @@ async function downloadSelectedPhotos() {
         const zip = new JSZip();
         const folder = zip.folder('selected_photos');
 
-        // 各写真をZIPに追加
-        selectedPhotos.forEach((photo, index) => {
-            // Base64データをBlobに変換
-            const base64Data = photo.data.split(',')[1];
-            const fileName = photo.name || `photo_${String(index + 1).padStart(3, '0')}.jpg`;
-            folder.file(fileName, base64Data, { base64: true });
-        });
+        // 各写真をダウンロードしてZIPに追加
+        for (let i = 0; i < selectedPhotos.length; i++) {
+            const photo = selectedPhotos[i];
+            downloadBtn.textContent = `ダウンロード中... (${i + 1}/${selectedPhotos.length})`;
+
+            try {
+                // SupabaseのURLから画像をfetch
+                const response = await fetch(photo.url);
+                const blob = await response.blob();
+
+                // ZIPに追加
+                folder.file(photo.file_name, blob);
+            } catch (error) {
+                console.error(`写真 ${photo.file_name} のダウンロードエラー:`, error);
+                // 失敗しても続行
+            }
+        }
 
         // ZIPファイルを生成
         downloadBtn.textContent = 'ZIP生成中...';
-        const blob = await zip.generateAsync({ type: 'blob' });
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
 
         // ダウンロードリンクを作成
-        const url = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(zipBlob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `${currentGallery.name || 'selected_photos'}_${selectedPhotos.length}枚.zip`;
@@ -191,7 +233,7 @@ async function downloadSelectedPhotos() {
 }
 
 function submitSelection() {
-    const selectedCount = currentGallery.photos.filter(p => p.selected).length;
+    const selectedCount = selectedPhotoIds.size;
 
     if (selectedCount === 0) {
         if (!confirm('写真が1枚も選択されていません。このまま送信しますか？')) {
@@ -199,10 +241,8 @@ function submitSelection() {
         }
     }
 
-    // ギャラリーを保存
-    photoStorage.saveGallery(currentGallery);
-
-    alert(`選択を送信しました！\n\n選択枚数: ${selectedCount}枚 / ${currentGallery.photos.length}枚\n\nありがとうございました。`);
+    // 選択はすでにSupabaseに保存されている
+    alert(`選択を送信しました！\n\n選択枚数: ${selectedCount}枚 / ${currentPhotos.length}枚\n\nありがとうございました。`);
 
     // 送信後は変更不可にする（オプション）
     document.getElementById('submitSelection').disabled = true;
@@ -265,7 +305,7 @@ function openLightbox(index) {
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightboxImg');
 
-    lightboxImg.src = currentGallery.photos[index].data;
+    lightboxImg.src = currentPhotos[index].url;
     lightbox.classList.add('active');
     lightbox.style.display = 'flex';
 
@@ -282,20 +322,20 @@ function navigatePhoto(direction) {
     currentPhotoIndex += direction;
 
     if (currentPhotoIndex < 0) {
-        currentPhotoIndex = currentGallery.photos.length - 1;
-    } else if (currentPhotoIndex >= currentGallery.photos.length) {
+        currentPhotoIndex = currentPhotos.length - 1;
+    } else if (currentPhotoIndex >= currentPhotos.length) {
         currentPhotoIndex = 0;
     }
 
     const lightboxImg = document.getElementById('lightboxImg');
-    lightboxImg.src = currentGallery.photos[currentPhotoIndex].data;
+    lightboxImg.src = currentPhotos[currentPhotoIndex].url;
 
     updateLightboxSelection();
 }
 
 function updateLightboxSelection() {
     const toggleBtn = document.getElementById('toggleSelection');
-    const isSelected = currentGallery.photos[currentPhotoIndex].selected;
+    const isSelected = selectedPhotoIds.has(currentPhotos[currentPhotoIndex].id);
 
     if (isSelected) {
         toggleBtn.textContent = '選択解除 ✓';

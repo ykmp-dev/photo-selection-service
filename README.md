@@ -7,9 +7,10 @@
 - 🎨 シンプルで使いやすいUI
 - 📱 スマホ・タブレット対応（レスポンシブデザイン）
 - 🔒 パスワード保護機能（オプション）
-- 💾 ブラウザのローカルストレージで動作（サーバー不要）
+- ☁️ Supabaseバックエンド（PostgreSQL + Storage）
 - 🖼️ 写真の拡大表示・比較機能
 - ✅ お客様の選択結果をリアルタイムで確認
+- 📥 選択写真のZIPダウンロード機能（最大30枚）
 
 ## 機能
 
@@ -78,23 +79,27 @@ photo-selection-service/
 ├── client.html         # お客様選択画面
 ├── package.json        # プロジェクト設定
 ├── css/
-│   └── style.css      # スタイルシート
+│   └── style.css           # スタイルシート
 ├── js/
-│   ├── storage.js     # データ管理（LocalStorage）
-│   ├── studio.js      # スタジオ側のロジック
-│   └── client.js      # お客様側のロジック
-├── docs/              # ドキュメント
-│   ├── requirements.md    # 要件定義書
-│   ├── screen-flow.md     # 画面遷移図
-│   ├── wireframes.md      # ワイヤーフレーム
-│   └── architecture.md    # システムアーキテクチャ
-└── README.md          # このファイル
+│   ├── storage.js          # レガシーストレージ（LocalStorage）
+│   ├── supabase-config.js  # Supabase接続設定
+│   ├── supabase-storage.js # Supabaseデータ操作
+│   ├── studio.js           # スタジオ側のロジック
+│   └── client.js           # お客様側のロジック
+├── docs/                   # ドキュメント
+│   ├── requirements.md     # 要件定義書
+│   ├── screen-flow.md      # 画面遷移図
+│   ├── wireframes.md       # ワイヤーフレーム
+│   ├── architecture.md     # システムアーキテクチャ
+│   └── supabase-setup.md   # Supabaseセットアップガイド
+└── README.md               # このファイル
 ```
 
 ## ドキュメント
 
 詳細な設計ドキュメントは [`docs/`](./docs) フォルダをご覧ください：
 
+- **[Supabaseセットアップガイド](./docs/supabase-setup.md)**: バックエンドの初期設定手順
 - **[要件定義書](./docs/requirements.md)**: ビジネスフロー、機能要件、データ設計
 - **[画面遷移図](./docs/screen-flow.md)**: 全15画面の遷移パターン
 - **[ワイヤーフレーム](./docs/wireframes.md)**: 主要画面のレイアウト設計
@@ -103,22 +108,25 @@ photo-selection-service/
 ## 技術仕様
 
 - **フロントエンド**: Pure JavaScript (ES6+)
-- **ストレージ**: LocalStorage（ブラウザ内保存）
+- **バックエンド**: Supabase (PostgreSQL + Storage)
 - **画像処理**: Canvas API（画像圧縮）
+- **ファイル操作**: JSZip（ZIPダウンロード）
 - **対応ブラウザ**: Chrome, Firefox, Safari, Edge（最新版）
 
 ## 注意事項
 
-- ⚠️ データはブラウザのLocalStorageに保存されます
-- ⚠️ ブラウザのデータを削除するとギャラリーも削除されます
-- ⚠️ 大量の写真（100枚以上）はパフォーマンスに影響する可能性があります
-- ⚠️ 本番環境で使用する場合は、バックエンドサーバーの実装を推奨します
+- ⚠️ Supabaseのセットアップが必要です（[セットアップガイド](./docs/supabase-setup.md)参照）
+- ⚠️ 写真の選択は最大30枚までです
+- ⚠️ 大量の写真をアップロードする場合は時間がかかる場合があります
+- ⚠️ Supabase無料プランには容量制限があります（500MB Storage）
 
 ## 今後の拡張予定
 
-- [ ] バックエンド実装（データベース保存）
+- [x] バックエンド実装（Supabase）✅
+- [x] 写真のダウンロード機能（ZIP）✅
+- [ ] フォトブック注文機能
+- [ ] 銀塩プリント注文機能（6-20枚、複数デザイン）
 - [ ] ユーザー認証機能
-- [ ] 写真のダウンロード機能
 - [ ] コメント機能
 - [ ] 評価システム（星評価など）
 - [ ] メール通知機能
@@ -132,8 +140,15 @@ MIT
 
 このプロジェクトは以下の構成で動作します：
 
-- **storage.js**: LocalStorageの管理とデータの永続化
+- **supabase-config.js**: Supabase接続設定とクライアント初期化
+- **supabase-storage.js**: Supabase API操作（CRUD、Storage）
 - **studio.js**: 写真のアップロード、ギャラリー作成、URL生成
 - **client.js**: 写真の表示、選択、ライトボックス機能
+
+### セットアップ手順
+
+1. Supabaseプロジェクトを作成（[セットアップガイド](./docs/supabase-setup.md)参照）
+2. `js/supabase-config.js` に認証情報を設定
+3. GitHub Pagesにデプロイ、またはローカルサーバーで起動
 
 カスタマイズやバグ報告は、リポジトリのIssuesまでお願いします。
