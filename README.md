@@ -83,8 +83,22 @@ photo-selection-service/
 │   ├── storage.js     # データ管理（LocalStorage）
 │   ├── studio.js      # スタジオ側のロジック
 │   └── client.js      # お客様側のロジック
+├── docs/              # ドキュメント
+│   ├── requirements.md    # 要件定義書
+│   ├── screen-flow.md     # 画面遷移図
+│   ├── wireframes.md      # ワイヤーフレーム
+│   └── architecture.md    # システムアーキテクチャ
 └── README.md          # このファイル
 ```
+
+## ドキュメント
+
+詳細な設計ドキュメントは [`docs/`](./docs) フォルダをご覧ください：
+
+- **[要件定義書](./docs/requirements.md)**: ビジネスフロー、機能要件、データ設計
+- **[画面遷移図](./docs/screen-flow.md)**: 全15画面の遷移パターン
+- **[ワイヤーフレーム](./docs/wireframes.md)**: 主要画面のレイアウト設計
+- **[システムアーキテクチャ](./docs/architecture.md)**: 技術スタック、DB設計、API設計
 
 ## 技術仕様
 

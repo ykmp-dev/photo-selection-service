@@ -271,6 +271,11 @@ header h1 {
     color: #333;
 }
 
+.control-buttons {
+    display: flex;
+    gap: 10px;
+}
+
 /* 写真グリッド */
 .photo-grid {
     display: grid;
