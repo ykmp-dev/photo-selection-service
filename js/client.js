@@ -115,6 +115,13 @@ async function showGallery() {
 
         // ライトボックスの設定
         setupLightbox();
+
+        // 確定済みチェック
+        if (currentGallery.confirmed_at) {
+            console.log('確定済みギャラリー: 読み取り専用モード');
+            makeReadOnly();
+        }
+
         console.log('showGallery完了');
     } catch (error) {
         console.error('ギャラリー表示エラー:', error);
@@ -268,8 +275,9 @@ async function downloadSelectedPhotos() {
     }
 }
 
-function submitSelection() {
+async function submitSelection() {
     const selectedCount = selectedPhotoIds.size;
+    const selectedPhotos = currentPhotos.filter(p => selectedPhotoIds.has(p.id));
 
     if (selectedCount === 0) {
         if (!confirm('写真が1枚も選択されていません。このまま送信しますか？')) {
@@ -277,12 +285,186 @@ function submitSelection() {
         }
     }
 
-    // 選択はすでにSupabaseに保存されている
-    alert(`選択を送信しました！\n\n選択枚数: ${selectedCount}枚 / ${currentPhotos.length}枚\n\nありがとうございました。`);
+    // 確認画面を表示
+    showConfirmationModal(selectedPhotos);
+}
 
-    // 送信後は変更不可にする（オプション）
+function showConfirmationModal(selectedPhotos) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 20px;
+        overflow-y: auto;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 800px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+    `;
+
+    const thumbnailsHTML = selectedPhotos.map((photo, i) => `
+        <img src="${photo.url}" alt="${photo.file_name}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px; margin: 5px;">
+    `).join('');
+
+    content.innerHTML = `
+        <h2 style="margin-top: 0; color: #333; text-align: center;">📸 選択確認</h2>
+        <p style="color: #666; text-align: center; font-size: 18px; margin: 20px 0;">
+            <strong>${selectedPhotos.length}枚</strong>の写真を選択しました
+        </p>
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; margin: 20px 0; max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; padding: 10px;">
+            ${thumbnailsHTML}
+        </div>
+        <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <p style="margin: 0; color: #856404; font-weight: bold; text-align: center;">
+                ⚠️ 重要なお知らせ
+            </p>
+            <p style="margin: 10px 0 0 0; color: #856404; text-align: center;">
+                一度確定すると、選択内容を変更することはできません。<br>
+                本当にこの選択で確定してもよろしいですか？
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button id="cancelConfirmBtn" class="btn" style="flex: 1; background: #6c757d; padding: 15px;">戻る</button>
+            <button id="confirmSubmitBtn" class="btn btn-success" style="flex: 1; padding: 15px; font-size: 16px;">確定する</button>
+        </div>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+    // イベントリスナー
+    document.getElementById('cancelConfirmBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+
+    document.getElementById('confirmSubmitBtn').addEventListener('click', async () => {
+        try {
+            document.getElementById('confirmSubmitBtn').disabled = true;
+            document.getElementById('confirmSubmitBtn').textContent = '確定中...';
+
+            // Supabaseで選択を確定
+            await supabaseStorage.confirmSelection(currentGallery.id);
+
+            document.body.removeChild(modal);
+
+            // 成功画面を表示
+            showSuccessScreen(selectedPhotos);
+
+            // UIを読み取り専用に
+            makeReadOnly();
+
+        } catch (error) {
+            console.error('確定エラー:', error);
+            alert('確定処理中にエラーが発生しました。\n\nエラー: ' + (error.message || error));
+            document.getElementById('confirmSubmitBtn').disabled = false;
+            document.getElementById('confirmSubmitBtn').textContent = '確定する';
+        }
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
+}
+
+function showSuccessScreen(selectedPhotos) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 20px;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        max-width: 600px;
+        width: 100%;
+        text-align: center;
+    `;
+
+    content.innerHTML = `
+        <div style="font-size: 80px; margin-bottom: 20px;">✅</div>
+        <h2 style="margin: 0 0 10px 0; color: #333;">選択を確定しました！</h2>
+        <p style="color: #666; margin: 20px 0;">
+            ${selectedPhotos.length}枚の写真を選択いただきありがとうございました。<br>
+            選択された写真をダウンロードできます。
+        </p>
+        <div style="margin-top: 30px;">
+            <button id="downloadNowBtn" class="btn btn-primary" style="padding: 15px 30px; font-size: 16px; margin-bottom: 10px;">
+                📥 今すぐダウンロード
+            </button>
+        </div>
+        <button id="closeSuccessBtn" class="btn" style="margin-top: 10px; background: #6c757d;">閉じる</button>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+    document.getElementById('downloadNowBtn').addEventListener('click', async () => {
+        document.body.removeChild(modal);
+        await downloadSelectedPhotos();
+    });
+
+    document.getElementById('closeSuccessBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+}
+
+function makeReadOnly() {
+    // すべての写真の選択を無効化
+    const photoItems = document.querySelectorAll('.photo-item');
+    photoItems.forEach(item => {
+        item.style.pointerEvents = 'none';
+        item.style.opacity = '0.8';
+    });
+
+    // ボタンを無効化
     document.getElementById('submitSelection').disabled = true;
-    document.getElementById('submitSelection').textContent = '送信済み';
+    document.getElementById('submitSelection').textContent = '確定済み';
+
+    // メッセージを表示
+    const controls = document.querySelector('.controls');
+    if (controls) {
+        const message = document.createElement('div');
+        message.style.cssText = `
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        `;
+        message.textContent = '✅ 選択が確定されました。変更はできません。';
+        controls.parentNode.insertBefore(message, controls);
+    }
 }
 
 // ライトボックス機能
