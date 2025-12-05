@@ -1,17 +1,65 @@
--- ダウンロード追跡とアップセル機能のためのスキーマ更新
+-- 写真選択サービス 完全データベーススキーマ
 -- Supabase SQL Editorで実行してください
+-- このスクリプトは全テーブルを最初から作成します
 
--- 1. galleriesテーブルにダウンロード追跡カラムを追加
-ALTER TABLE galleries
-ADD COLUMN IF NOT EXISTS download_count INTEGER DEFAULT 0,
-ADD COLUMN IF NOT EXISTS first_download_at TIMESTAMP WITH TIME ZONE,
-ADD COLUMN IF NOT EXISTS download_expires_at TIMESTAMP WITH TIME ZONE;
+-- UUID拡張を有効化（Supabaseではデフォルトで有効ですが念のため）
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- インデックスを追加（パフォーマンス向上）
+-- 1. galleriesテーブル（メインテーブル）
+CREATE TABLE IF NOT EXISTS galleries (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    password_hash TEXT,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    max_selections INTEGER DEFAULT 30,
+    confirmed_at TIMESTAMP WITH TIME ZONE,
+    download_count INTEGER DEFAULT 0,
+    first_download_at TIMESTAMP WITH TIME ZONE,
+    download_expires_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- galleriesテーブルのインデックス
+CREATE INDEX IF NOT EXISTS idx_galleries_expires_at
+ON galleries(expires_at);
+
+CREATE INDEX IF NOT EXISTS idx_galleries_confirmed_at
+ON galleries(confirmed_at);
+
 CREATE INDEX IF NOT EXISTS idx_galleries_download_expires_at
 ON galleries(download_expires_at);
 
--- 2. ダウンロード履歴テーブル
+-- 2. photosテーブル
+CREATE TABLE IF NOT EXISTS photos (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    gallery_id UUID REFERENCES galleries(id) ON DELETE CASCADE,
+    file_name TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    file_size BIGINT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- photosテーブルのインデックス
+CREATE INDEX IF NOT EXISTS idx_photos_gallery_id
+ON photos(gallery_id);
+
+-- 3. selectionsテーブル
+CREATE TABLE IF NOT EXISTS selections (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    gallery_id UUID NOT NULL,
+    photo_id UUID REFERENCES photos(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(gallery_id, photo_id)
+);
+
+-- selectionsテーブルのインデックス
+CREATE INDEX IF NOT EXISTS idx_selections_gallery_id
+ON selections(gallery_id);
+
+CREATE INDEX IF NOT EXISTS idx_selections_photo_id
+ON selections(photo_id);
+
+-- 4. download_historyテーブル（ダウンロード履歴）
 CREATE TABLE IF NOT EXISTS download_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     gallery_id UUID REFERENCES galleries(id) ON DELETE CASCADE,
@@ -21,14 +69,14 @@ CREATE TABLE IF NOT EXISTS download_history (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- インデックス
+-- download_historyテーブルのインデックス
 CREATE INDEX IF NOT EXISTS idx_download_history_gallery_id
 ON download_history(gallery_id);
 
 CREATE INDEX IF NOT EXISTS idx_download_history_downloaded_at
 ON download_history(downloaded_at);
 
--- 3. 追加ダウンロードパス購入記録テーブル
+-- 5. download_passesテーブル（追加ダウンロードパス購入記録）
 CREATE TABLE IF NOT EXISTS download_passes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     gallery_id UUID REFERENCES galleries(id) ON DELETE CASCADE,
@@ -40,14 +88,86 @@ CREATE TABLE IF NOT EXISTS download_passes (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- インデックス
+-- download_passesテーブルのインデックス
 CREATE INDEX IF NOT EXISTS idx_download_passes_gallery_id
 ON download_passes(gallery_id);
 
 CREATE INDEX IF NOT EXISTS idx_download_passes_status
 ON download_passes(status);
 
--- 4. Row Level Security (RLS) ポリシー
+-- ==========================================
+-- Row Level Security (RLS) ポリシー
+-- ==========================================
+
+-- galleriesテーブルのRLS
+ALTER TABLE galleries ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public insert to galleries"
+ON galleries
+FOR INSERT
+TO public
+WITH CHECK (true);
+
+CREATE POLICY "Allow public read galleries"
+ON galleries
+FOR SELECT
+TO public
+USING (true);
+
+CREATE POLICY "Allow public update galleries"
+ON galleries
+FOR UPDATE
+TO public
+USING (true)
+WITH CHECK (true);
+
+CREATE POLICY "Allow public delete galleries"
+ON galleries
+FOR DELETE
+TO public
+USING (true);
+
+-- photosテーブルのRLS
+ALTER TABLE photos ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public insert to photos"
+ON photos
+FOR INSERT
+TO public
+WITH CHECK (true);
+
+CREATE POLICY "Allow public read photos"
+ON photos
+FOR SELECT
+TO public
+USING (true);
+
+CREATE POLICY "Allow public delete photos"
+ON photos
+FOR DELETE
+TO public
+USING (true);
+
+-- selectionsテーブルのRLS
+ALTER TABLE selections ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public insert to selections"
+ON selections
+FOR INSERT
+TO public
+WITH CHECK (true);
+
+CREATE POLICY "Allow public read selections"
+ON selections
+FOR SELECT
+TO public
+USING (true);
+
+CREATE POLICY "Allow public delete selections"
+ON selections
+FOR DELETE
+TO public
+USING (true);
 
 -- download_historyテーブルのRLS
 ALTER TABLE download_history ENABLE ROW LEVEL SECURITY;
@@ -86,7 +206,11 @@ TO public
 USING (true)
 WITH CHECK (true);
 
--- 5. データ有効期限チェック関数
+-- ==========================================
+-- ヘルパー関数
+-- ==========================================
+
+-- データ有効期限チェック関数
 CREATE OR REPLACE FUNCTION check_gallery_expiration()
 RETURNS TABLE (
     gallery_id UUID,
@@ -110,7 +234,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 6. ダウンロード統計関数
+-- ダウンロード統計関数
 CREATE OR REPLACE FUNCTION get_download_stats(p_gallery_id UUID)
 RETURNS TABLE (
     total_downloads BIGINT,
@@ -138,12 +262,18 @@ $$ LANGUAGE plpgsql;
 -- 完了メッセージ
 DO $$
 BEGIN
-    RAISE NOTICE '✅ スキーマ更新完了！';
-    RAISE NOTICE '以下のテーブルが追加/更新されました：';
-    RAISE NOTICE '  - galleries (download_count, first_download_at, download_expires_at)';
-    RAISE NOTICE '  - download_history (新規)';
-    RAISE NOTICE '  - download_passes (新規)';
-    RAISE NOTICE '関数：';
-    RAISE NOTICE '  - check_gallery_expiration()';
-    RAISE NOTICE '  - get_download_stats(gallery_id)';
+    RAISE NOTICE '✅ データベーススキーマ作成完了！';
+    RAISE NOTICE '';
+    RAISE NOTICE '作成されたテーブル：';
+    RAISE NOTICE '  1. galleries - ギャラリー情報（ダウンロード追跡含む）';
+    RAISE NOTICE '  2. photos - 写真データ';
+    RAISE NOTICE '  3. selections - お客様の選択情報';
+    RAISE NOTICE '  4. download_history - ダウンロード履歴';
+    RAISE NOTICE '  5. download_passes - 追加ダウンロードパス購入記録';
+    RAISE NOTICE '';
+    RAISE NOTICE '作成された関数：';
+    RAISE NOTICE '  - check_gallery_expiration() - 有効期限チェック';
+    RAISE NOTICE '  - get_download_stats(gallery_id) - ダウンロード統計';
+    RAISE NOTICE '';
+    RAISE NOTICE 'すべてのテーブルでRLSが有効化され、publicアクセスポリシーが設定されました。';
 END $$;
