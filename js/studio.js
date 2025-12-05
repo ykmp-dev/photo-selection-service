@@ -211,6 +211,9 @@ async function loadGalleries() {
             const item = document.createElement('div');
             item.className = 'gallery-item';
 
+            const passwordDisplay = gallery.password_hash ?
+                `<div style="margin-top: 5px; font-size: 0.9em; color: #667eea;">パスワード: <strong>${gallery.password_hash}</strong></div>` : '';
+
             item.innerHTML = `
                 <div class="gallery-info">
                     <h3>${hasPassword} ${gallery.name}</h3>
@@ -219,6 +222,7 @@ async function loadGalleries() {
                         選択済み: ${selectedPhotoIds.length}枚 |
                         作成日: ${new Date(gallery.created_at).toLocaleDateString('ja-JP')}
                     </div>
+                    ${passwordDisplay}
                 </div>
                 <div class="gallery-actions">
                     <button class="btn btn-primary" onclick="viewGallery('${gallery.id}')">

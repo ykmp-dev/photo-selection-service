@@ -5,38 +5,57 @@ let selectedPhotoIds = new Set();
 let currentPhotoIndex = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOMContentLoaded - client.js起動');
+    console.log('supabaseClient:', window.supabaseClient);
+    console.log('supabaseStorage:', window.supabaseStorage);
     initializeClient();
 });
 
 async function initializeClient() {
+    console.log('initializeClient開始');
     const urlParams = new URLSearchParams(window.location.search);
     const galleryId = urlParams.get('gallery');
+    console.log('ギャラリーID:', galleryId);
 
     if (!galleryId) {
+        console.error('ギャラリーIDが指定されていません');
         document.body.innerHTML = '<div style="text-align: center; padding: 50px;"><h1>無効なURLです</h1><p>ギャラリーIDが指定されていません。</p></div>';
         return;
     }
 
+    // supabaseStorageの存在確認
+    if (!window.supabaseStorage) {
+        console.error('supabaseStorageが初期化されていません');
+        document.body.innerHTML = '<div style="text-align: center; padding: 50px;"><h1>初期化エラー</h1><p>システムの初期化に失敗しました。ページを再読み込みしてください。</p></div>';
+        return;
+    }
+
     try {
+        console.log('ギャラリー情報を取得中...');
         // ギャラリー情報を取得
         const gallery = await supabaseStorage.getGallery(galleryId);
+        console.log('取得したギャラリー:', gallery);
 
         if (!gallery) {
+            console.error('ギャラリーが見つかりません');
             document.body.innerHTML = '<div style="text-align: center; padding: 50px;"><h1>ギャラリーが見つかりません</h1><p>このギャラリーは削除されたか、存在しません。</p></div>';
             return;
         }
 
         currentGallery = gallery;
+        console.log('currentGallery設定完了');
 
         // パスワード確認
         if (gallery.password_hash) {
+            console.log('パスワード認証が必要');
             setupPasswordAuth();
         } else {
+            console.log('パスワード不要、ギャラリー表示');
             await showGallery();
         }
     } catch (error) {
-        console.error('ギャラリー読み込みエラー:', error);
-        document.body.innerHTML = '<div style="text-align: center; padding: 50px;"><h1>エラー</h1><p>ギャラリーの読み込みに失敗しました。</p></div>';
+        console.error('ギャラリー読み込みエラー詳細:', error);
+        document.body.innerHTML = '<div style="text-align: center; padding: 50px;"><h1>エラー</h1><p>ギャラリーの読み込みに失敗しました。</p><pre style="color: red; text-align: left; margin-top: 20px; padding: 10px; background: #f5f5f5; border-radius: 5px;">' + (error.message || error) + '</pre></div>';
     }
 }
 
@@ -70,28 +89,36 @@ function setupPasswordAuth() {
 
 async function showGallery() {
     try {
+        console.log('showGallery開始');
         // 写真一覧を取得
+        console.log('写真一覧を取得中...', currentGallery.id);
         currentPhotos = await supabaseStorage.getGalleryPhotos(currentGallery.id);
+        console.log('取得した写真数:', currentPhotos.length);
 
         // 選択情報を取得
+        console.log('選択情報を取得中...');
         const selectedIds = await supabaseStorage.getSelections(currentGallery.id);
+        console.log('選択済みID:', selectedIds);
         selectedPhotoIds = new Set(selectedIds);
 
+        console.log('UI更新開始');
         document.getElementById('mainContent').style.display = 'block';
         document.getElementById('galleryTitle').textContent = currentGallery.name;
 
         updatePhotoGrid();
         updateSelectionCount();
 
+        console.log('イベントリスナー設定');
         // イベントリスナー
         document.getElementById('downloadSelection').addEventListener('click', downloadSelectedPhotos);
         document.getElementById('submitSelection').addEventListener('click', submitSelection);
 
         // ライトボックスの設定
         setupLightbox();
+        console.log('showGallery完了');
     } catch (error) {
         console.error('ギャラリー表示エラー:', error);
-        alert('ギャラリーの表示中にエラーが発生しました。');
+        alert('ギャラリーの表示中にエラーが発生しました。\n\nエラー: ' + (error.message || error));
     }
 }
 
