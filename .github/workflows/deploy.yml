@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -42,7 +44,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
+          git fetch origin main:main || git checkout -b main
           git checkout main
           git merge --no-ff ${{ github.ref_name }} -m "Merge ${{ github.ref_name }} into main"
           git push origin main
