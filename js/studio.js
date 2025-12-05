@@ -27,14 +27,23 @@ function initializeStudio() {
         handleFiles(e.dataTransfer.files);
     });
 
-    // クリックでファイル選択
-    uploadArea.addEventListener('click', () => {
+    // クリックでファイル選択（labelクリックは除外）
+    uploadArea.addEventListener('click', (e) => {
+        // labelタグからのクリックは無視（labelが自動的にfileInputを開く）
+        if (e.target.tagName === 'LABEL' || e.target.closest('label')) {
+            return;
+        }
         if (!isUploading) {
             fileInput.click();
         }
     });
 
     fileInput.addEventListener('change', (e) => {
+        console.log('ファイル選択イベント発火:', e.target.files.length, '個のファイル');
+        if (e.target.files.length === 0) {
+            console.log('ファイルが選択されませんでした');
+            return;
+        }
         handleFiles(e.target.files);
     });
 
@@ -46,12 +55,21 @@ function initializeStudio() {
 }
 
 function handleFiles(files) {
+    console.log('handleFiles呼び出し:', files.length, '個のファイル');
     const fileArray = Array.from(files).filter(file => file.type.startsWith('image/'));
+    console.log('画像ファイル:', fileArray.length, '個');
+
+    if (fileArray.length === 0) {
+        alert('画像ファイルが選択されませんでした。\nJPG、PNG、GIF形式の画像を選択してください。');
+        return;
+    }
 
     fileArray.forEach(file => {
         selectedFiles.push(file);
+        console.log('追加:', file.name, file.type, file.size, 'bytes');
     });
 
+    console.log('合計選択:', selectedFiles.length, '個');
     updatePreview();
     updateCreateButton();
 }
