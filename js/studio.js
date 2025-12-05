@@ -338,15 +338,68 @@ async function deleteGallery(galleryId) {
         return;
     }
 
+    // 削除中のモーダルを表示
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        padding: 40px;
+        border-radius: 12px;
+        text-align: center;
+        min-width: 300px;
+    `;
+
+    content.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 20px;">🗑️</div>
+        <div style="font-size: 18px; font-weight: 600; margin-bottom: 10px; color: #333;">削除中...</div>
+        <div id="deleteStatus" style="color: #666; font-size: 14px;">準備中</div>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
     try {
         console.log('ギャラリー削除開始:', galleryId);
+
+        document.getElementById('deleteStatus').textContent = '写真を削除中...';
         await supabaseStorage.deleteGallery(galleryId);
+
         console.log('ギャラリー削除完了');
+
+        // 成功モーダルに切り替え
+        content.innerHTML = `
+            <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
+            <div style="font-size: 20px; font-weight: 600; margin-bottom: 10px; color: #333;">削除完了</div>
+            <div style="color: #666; font-size: 14px; margin-bottom: 20px;">ギャラリーを削除しました</div>
+        `;
+
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        document.body.removeChild(modal);
+
         await loadGalleries();
-        alert('ギャラリーを削除しました');
     } catch (error) {
         console.error('ギャラリー削除エラー詳細:', error);
-        alert(`ギャラリーの削除中にエラーが発生しました:\n${error.message || error}`);
+
+        // エラーモーダルに切り替え
+        content.innerHTML = `
+            <div style="font-size: 64px; margin-bottom: 20px;">❌</div>
+            <div style="font-size: 20px; font-weight: 600; margin-bottom: 10px; color: #e53e3e;">削除失敗</div>
+            <div style="color: #666; font-size: 14px; margin-bottom: 20px;">${error.message || 'エラーが発生しました'}</div>
+            <button onclick="this.closest('[style*=fixed]').remove()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">閉じる</button>
+        `;
     }
 }
 
