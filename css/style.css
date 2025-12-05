@@ -1,12 +1,33 @@
+/* Notion風デザインシステム */
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+:root {
+    /* Notionカラーパレット */
+    --notion-bg: #FFFFFF;
+    --notion-bg-secondary: #F7F6F3;
+    --notion-text: #37352F;
+    --notion-text-secondary: #787774;
+    --notion-border: #E9E9E7;
+    --notion-hover: #F1F1EF;
+    --notion-blue: #2383E2;
+    --notion-green: #0F7B6C;
+    --notion-red: #E03E3E;
+    --notion-purple: #9065B0;
+}
+
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 "游ゴシック体", YuGothic, "ヒラギノ角ゴ ProN", "Hiragino Kaku Gothic ProN",
+                 "メイリオ", Meiryo, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--notion-text);
+    background: var(--notion-bg-secondary);
     min-height: 100vh;
     padding: 20px;
 }
@@ -14,101 +35,111 @@ body {
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    padding: 30px;
+    background: var(--notion-bg);
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    padding: 48px;
 }
 
+/* ヘッダー */
 header {
-    text-align: center;
-    margin-bottom: 40px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #f0f0f0;
+    margin-bottom: 48px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--notion-border);
 }
 
 header h1 {
-    font-size: 2.5rem;
-    color: #333;
-    margin-bottom: 10px;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--notion-text);
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
 }
 
 .subtitle {
-    color: #666;
-    font-size: 1.1rem;
+    color: var(--notion-text-secondary);
+    font-size: 16px;
+    font-weight: 400;
 }
 
 /* フォーム要素 */
 .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
 
 .form-group label {
     display: block;
     margin-bottom: 8px;
-    font-weight: 600;
-    color: #333;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--notion-text);
 }
 
 .form-group input {
     width: 100%;
-    padding: 12px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: border-color 0.3s;
+    padding: 10px 12px;
+    border: 1px solid var(--notion-border);
+    border-radius: 3px;
+    font-size: 16px;
+    color: var(--notion-text);
+    background: var(--notion-bg);
+    transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .form-group input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--notion-blue);
+    box-shadow: 0 0 0 2px rgba(35, 131, 226, 0.1);
 }
 
 /* アップロードエリア */
 .upload-section {
-    margin-bottom: 50px;
+    margin-bottom: 48px;
 }
 
 .upload-area {
-    border: 3px dashed #ccc;
-    border-radius: 12px;
-    padding: 60px 20px;
+    border: 2px dashed var(--notion-border);
+    border-radius: 3px;
+    padding: 48px 24px;
     text-align: center;
-    margin: 20px 0;
-    transition: all 0.3s;
+    margin: 24px 0;
+    transition: all 0.15s;
     cursor: pointer;
+    background: var(--notion-bg);
 }
 
 .upload-area:hover,
 .upload-area.drag-over {
-    border-color: #667eea;
-    background: #f8f9ff;
+    border-color: var(--notion-blue);
+    background: rgba(35, 131, 226, 0.03);
 }
 
 .upload-icon {
-    font-size: 4rem;
-    margin-bottom: 20px;
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.6;
 }
 
 .upload-hint {
-    color: #999;
-    margin: 10px 0;
+    color: var(--notion-text-secondary);
+    margin: 8px 0;
+    font-size: 14px;
 }
 
 /* プレビューエリア */
 .preview-area {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 15px;
-    margin: 20px 0;
+    gap: 12px;
+    margin: 24px 0;
 }
 
 .preview-item {
     position: relative;
     aspect-ratio: 1;
-    border-radius: 8px;
+    border-radius: 3px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--notion-border);
 }
 
 .preview-item img {
@@ -119,110 +150,126 @@ header h1 {
 
 .preview-item .remove-btn {
     position: absolute;
-    top: 5px;
-    right: 5px;
-    background: rgba(255, 0, 0, 0.8);
+    top: 6px;
+    right: 6px;
+    background: rgba(224, 62, 62, 0.9);
     color: white;
     border: none;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
+    border-radius: 3px;
+    width: 28px;
+    height: 28px;
     cursor: pointer;
-    font-size: 1.2rem;
+    font-size: 16px;
     line-height: 1;
+    transition: background 0.15s;
+}
+
+.preview-item .remove-btn:hover {
+    background: rgba(224, 62, 62, 1);
 }
 
 /* ボタン */
 .btn {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
+    padding: 10px 16px;
+    border: 1px solid var(--notion-border);
+    border-radius: 3px;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s;
-    font-weight: 600;
+    transition: all 0.15s;
+    background: var(--notion-bg);
+    color: var(--notion-text);
+}
+
+.btn:hover {
+    background: var(--notion-hover);
 }
 
 .btn-primary {
-    background: #667eea;
+    background: var(--notion-blue);
     color: white;
+    border-color: var(--notion-blue);
 }
 
 .btn-primary:hover {
-    background: #5568d3;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    background: #1a6bbd;
+    border-color: #1a6bbd;
 }
 
 .btn-success {
-    background: #48bb78;
+    background: var(--notion-green);
     color: white;
+    border-color: var(--notion-green);
 }
 
 .btn-success:hover {
-    background: #38a169;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+    background: #0c6158;
+    border-color: #0c6158;
 }
 
 .btn-large {
     width: 100%;
-    padding: 16px;
-    font-size: 1.2rem;
-    margin-top: 20px;
+    padding: 12px;
+    font-size: 16px;
+    margin-top: 24px;
 }
 
 .btn:disabled {
-    background: #ccc;
+    background: var(--notion-hover);
+    border-color: var(--notion-border);
+    color: var(--notion-text-secondary);
     cursor: not-allowed;
-    transform: none;
+    opacity: 0.5;
 }
 
 /* ギャラリーリスト */
 .gallery-list {
     display: grid;
-    gap: 20px;
+    gap: 12px;
 }
 
 .gallery-item {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
+    background: var(--notion-bg);
+    padding: 16px;
+    border: 1px solid var(--notion-border);
+    border-radius: 3px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    transition: transform 0.3s;
+    transition: background 0.15s;
 }
 
 .gallery-item:hover {
-    transform: translateX(5px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: var(--notion-hover);
 }
 
 .gallery-info h3 {
-    margin-bottom: 8px;
-    color: #333;
+    margin-bottom: 6px;
+    color: var(--notion-text);
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .gallery-meta {
-    color: #666;
-    font-size: 0.9rem;
+    color: var(--notion-text-secondary);
+    font-size: 14px;
 }
 
 .gallery-actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
 }
 
 .gallery-actions .btn {
-    padding: 8px 16px;
-    font-size: 0.9rem;
+    padding: 6px 12px;
+    font-size: 13px;
 }
 
 .empty-message {
     text-align: center;
-    color: #999;
-    padding: 40px;
+    color: var(--notion-text-secondary);
+    padding: 48px;
+    font-size: 14px;
 }
 
 /* お客様画面 */
@@ -232,29 +279,33 @@ header h1 {
 
 .auth-section {
     max-width: 400px;
-    margin: 50px auto;
+    margin: 80px auto;
     text-align: center;
 }
 
 .auth-section h2 {
-    margin-bottom: 20px;
-    color: #333;
+    margin-bottom: 24px;
+    color: var(--notion-text);
+    font-size: 24px;
+    font-weight: 700;
 }
 
 .auth-section input {
     width: 100%;
-    padding: 12px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 1rem;
-    margin-bottom: 15px;
+    padding: 10px 12px;
+    border: 1px solid var(--notion-border);
+    border-radius: 3px;
+    font-size: 16px;
+    margin-bottom: 16px;
 }
 
 .error-message {
-    color: #e53e3e;
-    margin-top: 10px;
+    color: var(--notion-red);
+    margin-top: 8px;
+    font-size: 14px;
 }
 
+/* 固定コントロールバー */
 .controls {
     position: fixed;
     bottom: 0;
@@ -263,46 +314,44 @@ header h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px;
-    background: #ffffff;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
+    padding: 16px 24px;
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid var(--notion-border);
+    z-index: 1000;
 }
 
 .selection-info {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #333;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--notion-text);
 }
 
 .control-buttons {
     display: flex;
-    gap: 10px;
+    gap: 8px;
 }
 
 /* 写真グリッド */
 .photo-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 20px;
-    padding-bottom: 120px; /* 固定コントロールバーのスペースを確保 */
+    gap: 16px;
+    padding-bottom: 120px;
 }
 
 .photo-item {
     position: relative;
     aspect-ratio: 1;
-    border-radius: 8px;
+    border-radius: 3px;
     overflow: hidden;
     cursor: pointer;
-    transition: transform 0.3s;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.15s;
+    border: 1px solid var(--notion-border);
 }
 
 .photo-item:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    transform: scale(1.02);
 }
 
 .photo-item img {
@@ -311,7 +360,7 @@ header h1 {
     object-fit: cover;
 }
 
-/* 選択された写真の緑オーバーレイ */
+/* 選択された写真 */
 .photo-item.selected::before {
     content: '';
     position: absolute;
@@ -319,35 +368,32 @@ header h1 {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(72, 187, 120, 0.3);
+    background: rgba(15, 123, 108, 0.2);
     z-index: 1;
     pointer-events: none;
 }
 
-/* 選択された写真のチェックマーク */
 .photo-item.selected::after {
     content: '✓';
     position: absolute;
-    top: 10px;
-    right: 10px;
-    background: #48bb78;
+    top: 8px;
+    right: 8px;
+    background: var(--notion-green);
     color: white;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    border-radius: 3px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 18px;
     font-weight: bold;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     z-index: 2;
 }
 
-/* 選択された写真の陥没効果 */
 .photo-item.selected {
-    transform: scale(0.95);
-    box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.2);
+    transform: scale(0.98);
+    border-color: var(--notion-green);
 }
 
 /* ライトボックス */
@@ -359,8 +405,8 @@ header h1 {
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.95);
-    padding: 20px;
+    background-color: rgba(0, 0, 0, 0.9);
+    padding: 24px;
 }
 
 .lightbox.active {
@@ -372,10 +418,10 @@ header h1 {
 
 .lightbox-close {
     position: absolute;
-    top: 20px;
+    top: 24px;
     right: 40px;
     color: white;
-    font-size: 40px;
+    font-size: 32px;
     font-weight: bold;
     cursor: pointer;
     z-index: 1001;
@@ -389,69 +435,37 @@ header h1 {
     max-width: 90%;
     max-height: 80vh;
     object-fit: contain;
-    border-radius: 8px;
+    border-radius: 3px;
 }
 
 .lightbox-controls {
-    margin-top: 20px;
+    margin-top: 24px;
     display: flex;
-    gap: 15px;
-}
-
-/* レスポンシブ */
-@media (max-width: 768px) {
-    .container {
-        padding: 20px;
-    }
-
-    header h1 {
-        font-size: 1.8rem;
-    }
-
-    .photo-grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 15px;
-    }
-
-    .controls {
-        flex-direction: column;
-        gap: 15px;
-        text-align: center;
-    }
-
-    .gallery-item {
-        flex-direction: column;
-        gap: 15px;
-    }
-
-    .floating-counter {
-        font-size: 14px;
-        padding: 10px 15px;
-    }
+    gap: 12px;
 }
 
 /* スクロール追従カウンター */
 .floating-counter {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #667eea;
+    bottom: 24px;
+    right: 24px;
+    background: var(--notion-text);
     color: white;
-    padding: 15px 25px;
-    border-radius: 50px;
-    font-size: 18px;
-    font-weight: bold;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    padding: 12px 20px;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     z-index: 1000;
-    transition: all 0.3s ease;
+    transition: all 0.15s ease;
 }
 
 .floating-counter span {
-    font-size: 24px;
-    color: #ffd700;
+    font-size: 18px;
+    font-weight: 700;
 }
 
-/* スクリーンショット防止とセキュリティ */
+/* スクリーンショット防止 */
 .client-view {
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -469,42 +483,68 @@ header h1 {
     user-drag: none;
 }
 
-/* 写真に透かし */
-.photo-item {
-    position: relative;
-}
-
+/* 透かし */
 .photo-item::before {
     content: 'SAMPLE';
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) rotate(-45deg);
-    font-size: 40px;
+    font-size: 32px;
     font-weight: bold;
     color: rgba(255, 255, 255, 0.3);
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
     pointer-events: none;
     z-index: 10;
     white-space: nowrap;
 }
 
-.lightbox-content {
-    position: relative;
-}
-
-/* ライトボックス内の透かし */
 .lightbox::after {
     content: 'SAMPLE PREVIEW';
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) rotate(-45deg);
-    font-size: 60px;
+    font-size: 48px;
     font-weight: bold;
     color: rgba(255, 255, 255, 0.2);
-    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
     pointer-events: none;
     z-index: 1001;
     white-space: nowrap;
+}
+
+/* レスポンシブ */
+@media (max-width: 768px) {
+    .container {
+        padding: 24px;
+    }
+
+    header h1 {
+        font-size: 24px;
+    }
+
+    .photo-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 12px;
+    }
+
+    .controls {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+        padding: 12px;
+    }
+
+    .gallery-item {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .floating-counter {
+        font-size: 12px;
+        padding: 8px 12px;
+        bottom: 16px;
+        right: 16px;
+    }
 }
