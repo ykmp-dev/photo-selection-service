@@ -437,6 +437,178 @@ class SupabasePhotoStorage {
             reader.readAsDataURL(file);
         });
     }
+
+    // ===== ダウンロード追跡機能 =====
+
+    // ダウンロード履歴を記録
+    async recordDownload(galleryId) {
+        try {
+            // IPアドレスとユーザーエージェントを取得（クライアント側では限定的）
+            const userAgent = navigator.userAgent;
+
+            const { data, error } = await this.supabase
+                .from('download_history')
+                .insert([{
+                    gallery_id: galleryId,
+                    user_agent: userAgent
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            // ダウンロード回数を更新
+            await this.updateDownloadCount(galleryId);
+
+            return data;
+        } catch (error) {
+            console.error('ダウンロード記録エラー:', error);
+            throw error;
+        }
+    }
+
+    // ダウンロード回数を更新
+    async updateDownloadCount(galleryId) {
+        try {
+            // 現在のギャラリー情報を取得
+            const gallery = await this.getGallery(galleryId);
+
+            const updateData = {
+                download_count: (gallery.download_count || 0) + 1
+            };
+
+            // 初回ダウンロードの場合、日時を記録
+            if (!gallery.first_download_at) {
+                updateData.first_download_at = new Date().toISOString();
+                // 無料ダウンロード期限を7日後に設定
+                const expiresAt = new Date();
+                expiresAt.setDate(expiresAt.getDate() + 7);
+                updateData.download_expires_at = expiresAt.toISOString();
+            }
+
+            const { data, error } = await this.supabase
+                .from('galleries')
+                .update(updateData)
+                .eq('id', galleryId)
+                .select();
+
+            if (error) throw error;
+            return data && data.length > 0 ? data[0] : null;
+        } catch (error) {
+            console.error('ダウンロード回数更新エラー:', error);
+            throw error;
+        }
+    }
+
+    // ダウンロード統計を取得
+    async getDownloadStats(galleryId) {
+        try {
+            const { data, error } = await this.supabase
+                .from('download_history')
+                .select('*')
+                .eq('gallery_id', galleryId)
+                .order('downloaded_at', { ascending: false });
+
+            if (error) throw error;
+
+            return {
+                totalDownloads: data.length,
+                firstDownload: data.length > 0 ? data[data.length - 1].downloaded_at : null,
+                lastDownload: data.length > 0 ? data[0].downloaded_at : null,
+                history: data
+            };
+        } catch (error) {
+            console.error('ダウンロード統計取得エラー:', error);
+            throw error;
+        }
+    }
+
+    // ダウンロード可否をチェック
+    async checkDownloadPermission(galleryId) {
+        try {
+            const gallery = await this.getGallery(galleryId);
+
+            // データ保管期限切れチェック
+            if (gallery.expires_at && new Date(gallery.expires_at) < new Date()) {
+                return {
+                    allowed: false,
+                    reason: 'data_expired',
+                    message: 'データ保管期限が終了しました。'
+                };
+            }
+
+            // ダウンロード期限チェック
+            if (gallery.download_expires_at) {
+                const downloadExpired = new Date(gallery.download_expires_at) < new Date();
+
+                if (downloadExpired) {
+                    // 追加ダウンロードパスを持っているかチェック
+                    const hasActivePass = await this.hasActiveDownloadPass(galleryId);
+
+                    if (!hasActivePass) {
+                        return {
+                            allowed: false,
+                            reason: 'download_expired',
+                            message: '無料ダウンロード期間が終了しました。',
+                            needsPurchase: true
+                        };
+                    }
+                }
+            }
+
+            return {
+                allowed: true,
+                gallery: gallery
+            };
+        } catch (error) {
+            console.error('ダウンロード権限チェックエラー:', error);
+            throw error;
+        }
+    }
+
+    // アクティブなダウンロードパスを持っているかチェック
+    async hasActiveDownloadPass(galleryId) {
+        try {
+            const { data, error } = await this.supabase
+                .from('download_passes')
+                .select('*')
+                .eq('gallery_id', galleryId)
+                .eq('status', 'active')
+                .gt('expires_at', new Date().toISOString());
+
+            if (error) throw error;
+            return data && data.length > 0;
+        } catch (error) {
+            console.error('ダウンロードパスチェックエラー:', error);
+            return false;
+        }
+    }
+
+    // ダウンロードパスを購入（プレースホルダー）
+    async purchaseDownloadPass(galleryId, paymentInfo) {
+        try {
+            const expiresAt = new Date();
+            expiresAt.setFullYear(expiresAt.getFullYear() + 1); // 1年間
+
+            const { data, error } = await this.supabase
+                .from('download_passes')
+                .insert([{
+                    gallery_id: galleryId,
+                    expires_at: expiresAt.toISOString(),
+                    payment_id: paymentInfo.paymentId,
+                    amount: paymentInfo.amount,
+                    status: 'active'
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('ダウンロードパス購入エラー:', error);
+            throw error;
+        }
+    }
 }
 
 // グローバルインスタンス
