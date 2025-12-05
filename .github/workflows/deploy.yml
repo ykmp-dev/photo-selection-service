@@ -3,6 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
+      - main
+      - master
       - claude/photo-selection-service-01VxWQG7eDQbS5keud69LGwd
 
 permissions:
