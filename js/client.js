@@ -338,35 +338,220 @@ function showSuccessScreen(selectedPhotos) {
         background: white;
         border-radius: 12px;
         padding: 40px;
-        max-width: 600px;
+        max-width: 700px;
         width: 100%;
         text-align: center;
     `;
 
     content.innerHTML = `
         <div style="font-size: 80px; margin-bottom: 20px;">✅</div>
-        <h2 style="margin: 0 0 10px 0; color: #333;">選択を確定しました！</h2>
+        <h2 style="margin: 0 0 10px 0; color: #333;">お写真セレクトありがとうございました。</h2>
         <p style="color: #666; margin: 20px 0;">
-            ${selectedPhotos.length}枚の写真を選択いただきありがとうございました。<br>
-            選択された写真をダウンロードできます。
+            ${selectedPhotos.length}枚の写真を選択いただきました。<br>
+            次のステップをお選びください。
         </p>
-        <div style="margin-top: 30px;">
-            <button id="downloadNowBtn" class="btn btn-primary" style="padding: 15px 30px; font-size: 16px; margin-bottom: 10px;">
-                📥 今すぐダウンロード
+
+        <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 30px;">
+            <button id="downloadOnlyBtn" class="option-btn" style="padding: 20px; background: #48bb78; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s;">
+                📥 今回は注文せず完了する（ダウンロード）
+            </button>
+
+            <button id="orderPhotobookBtn" class="option-btn" style="padding: 20px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s;">
+                📖 フォトブックを注文する
+            </button>
+
+            <button id="orderPrintsBtn" class="option-btn" style="padding: 20px; background: #f56565; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s;">
+                🖼️ 写真プリントを注文する
+            </button>
+
+            <button id="orderAlbumBtn" class="option-btn" style="padding: 20px; background: #ed8936; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s;">
+                📚 プレミアムアルバムを注文する
             </button>
         </div>
-        <button id="closeSuccessBtn" class="btn" style="margin-top: 10px; background: #6c757d;">閉じる</button>
+
+        <p style="color: #999; margin-top: 20px; font-size: 14px;">
+            ※ 選択された写真はいつでも後からダウンロードできます
+        </p>
     `;
 
     modal.appendChild(content);
     document.body.appendChild(modal);
 
-    document.getElementById('downloadNowBtn').addEventListener('click', async () => {
-        document.body.removeChild(modal);
-        await downloadSelectedPhotos();
+    // ホバーエフェクト
+    const optionBtns = content.querySelectorAll('.option-btn');
+    optionBtns.forEach(btn => {
+        btn.addEventListener('mouseenter', () => {
+            btn.style.transform = 'scale(1.02)';
+            btn.style.boxShadow = '0 4px 20px rgba(0,0,0,0.2)';
+        });
+        btn.addEventListener('mouseleave', () => {
+            btn.style.transform = 'scale(1)';
+            btn.style.boxShadow = 'none';
+        });
     });
 
-    document.getElementById('closeSuccessBtn').addEventListener('click', () => {
+    // ダウンロードのみで完了
+    document.getElementById('downloadOnlyBtn').addEventListener('click', async () => {
+        await downloadSelectedPhotos(selectedPhotos);
+        document.body.removeChild(modal);
+    });
+
+    // フォトブック注文
+    document.getElementById('orderPhotobookBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+        showOrderScreen('photobook', selectedPhotos);
+    });
+
+    // プリント注文
+    document.getElementById('orderPrintsBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+        showOrderScreen('prints', selectedPhotos);
+    });
+
+    // アルバム注文
+    document.getElementById('orderAlbumBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+        showOrderScreen('album', selectedPhotos);
+    });
+}
+
+// 選択された写真をダウンロード
+async function downloadSelectedPhotos(selectedPhotos) {
+    try {
+        // ダウンロード準備中メッセージを表示
+        const message = document.createElement('div');
+        message.id = 'downloadMessage';
+        message.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 10001;
+            text-align: center;
+        `;
+        message.innerHTML = `
+            <div style="font-size: 48px; margin-bottom: 10px;">📦</div>
+            <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">ダウンロード準備中...</div>
+            <div id="downloadProgress" style="color: #666;">0 / ${selectedPhotos.length}</div>
+        `;
+        document.body.appendChild(message);
+
+        // JSZipを使用してZIPファイルを作成
+        const zip = new JSZip();
+        const folder = zip.folder('selected_photos');
+
+        // 各写真をダウンロードしてZIPに追加
+        for (let i = 0; i < selectedPhotos.length; i++) {
+            const photo = selectedPhotos[i];
+            document.getElementById('downloadProgress').textContent = `${i + 1} / ${selectedPhotos.length}`;
+
+            try {
+                const response = await fetch(photo.url);
+                const blob = await response.blob();
+                folder.file(photo.file_name, blob);
+            } catch (error) {
+                console.error(`写真 ${photo.file_name} のダウンロードエラー:`, error);
+            }
+        }
+
+        // ZIPファイルを生成
+        document.getElementById('downloadProgress').textContent = 'ZIP生成中...';
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+
+        // ダウンロード
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentGallery.name || 'selected_photos'}_${selectedPhotos.length}枚.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        // メッセージを削除
+        document.body.removeChild(message);
+
+        // 完了メッセージ
+        alert(`${selectedPhotos.length}枚の写真をダウンロードしました！`);
+    } catch (error) {
+        console.error('ダウンロードエラー:', error);
+        const msg = document.getElementById('downloadMessage');
+        if (msg) document.body.removeChild(msg);
+        alert('ダウンロード中にエラーが発生しました。\nもう一度お試しください。');
+    }
+}
+
+// 注文画面を表示
+function showOrderScreen(orderType, selectedPhotos) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 20px;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        max-width: 600px;
+        width: 100%;
+        text-align: center;
+    `;
+
+    const titles = {
+        photobook: '📖 フォトブック注文',
+        prints: '🖼️ 写真プリント注文',
+        album: '📚 プレミアムアルバム注文'
+    };
+
+    const descriptions = {
+        photobook: 'フォトブック注文機能は準備中です。',
+        prints: '写真プリント注文機能は準備中です。',
+        album: 'プレミアムアルバム注文機能は準備中です。'
+    };
+
+    content.innerHTML = `
+        <div style="font-size: 80px; margin-bottom: 20px;">🚧</div>
+        <h2 style="margin: 0 0 10px 0; color: #333;">${titles[orderType]}</h2>
+        <p style="color: #666; margin: 20px 0;">
+            ${descriptions[orderType]}<br>
+            しばらくお待ちください。
+        </p>
+        <p style="color: #999; margin: 20px 0; font-size: 14px;">
+            選択された写真: ${selectedPhotos.length}枚
+        </p>
+        <div style="margin-top: 30px; display: flex; gap: 10px;">
+            <button id="downloadFromOrderBtn" class="btn btn-primary" style="flex: 1; padding: 15px;">
+                📥 写真をダウンロード
+            </button>
+            <button id="closeOrderBtn" class="btn" style="flex: 1; padding: 15px; background: #6c757d;">
+                閉じる
+            </button>
+        </div>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+    document.getElementById('downloadFromOrderBtn').addEventListener('click', async () => {
+        await downloadSelectedPhotos(selectedPhotos);
+    });
+
+    document.getElementById('closeOrderBtn').addEventListener('click', () => {
         document.body.removeChild(modal);
     });
 }
