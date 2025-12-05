@@ -418,6 +418,19 @@ function showSuccessScreen(selectedPhotos) {
 // 選択された写真をダウンロード
 async function downloadSelectedPhotos(selectedPhotos) {
     try {
+        // ダウンロード権限チェック
+        const permission = await supabaseStorage.checkDownloadPermission(currentGallery.id);
+
+        if (!permission.allowed) {
+            if (permission.reason === 'data_expired') {
+                showExpiredDataScreen();
+                return;
+            } else if (permission.reason === 'download_expired' && permission.needsPurchase) {
+                showDownloadExpiredScreen(selectedPhotos);
+                return;
+            }
+        }
+
         // ダウンロード準備中メッセージを表示
         const message = document.createElement('div');
         message.id = 'downloadMessage';
@@ -472,11 +485,14 @@ async function downloadSelectedPhotos(selectedPhotos) {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
+        // ダウンロード履歴を記録
+        await supabaseStorage.recordDownload(currentGallery.id);
+
         // メッセージを削除
         document.body.removeChild(message);
 
-        // 完了メッセージ
-        alert(`${selectedPhotos.length}枚の写真をダウンロードしました！`);
+        // ダウンロード後のアップセル画面を表示
+        showPostDownloadUpsell(selectedPhotos);
     } catch (error) {
         console.error('ダウンロードエラー:', error);
         const msg = document.getElementById('downloadMessage');
@@ -682,3 +698,238 @@ function updateLightboxSelection() {
         toggleBtn.style.background = '#667eea';
     }
 }
+
+// ===== ダウンロード期限管理とアップセル =====
+
+// データ期限切れ画面
+function showExpiredDataScreen() {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 20px;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        max-width: 500px;
+        width: 100%;
+        text-align: center;
+    `;
+
+    content.innerHTML = `
+        <div style="font-size: 80px; margin-bottom: 20px;">⏰</div>
+        <h2 style="margin: 0 0 10px 0; color: var(--notion-text);">データ保管期限終了</h2>
+        <p style="color: var(--notion-text-secondary); margin: 20px 0;">
+            このギャラリーのデータ保管期限が終了しました。<br>
+            写真データは既に削除されています。
+        </p>
+        <p style="color: var(--notion-text-secondary); font-size: 14px; margin: 20px 0;">
+            次回は早めのダウンロードをお勧めします。
+        </p>
+        <button onclick="window.location.reload()" class="btn btn-primary" style="margin-top: 20px;">
+            戻る
+        </button>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+}
+
+// ダウンロード期限切れ画面
+function showDownloadExpiredScreen(selectedPhotos) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 20px;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        max-width: 600px;
+        width: 100%;
+        text-align: center;
+    `;
+
+    // ギャラリー情報から有効期限を計算
+    const expiresAt = new Date(currentGallery.expires_at);
+    const remainingDays = Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24));
+
+    content.innerHTML = `
+        <div style="font-size: 80px; margin-bottom: 20px;">💳</div>
+        <h2 style="margin: 0 0 10px 0; color: var(--notion-text);">無料ダウンロード期間終了</h2>
+        <p style="color: var(--notion-text-secondary); margin: 20px 0;">
+            無料ダウンロード期間（7日間）が終了しました。<br>
+            引き続きダウンロードするには追加ダウンロードパスが必要です。
+        </p>
+
+        <div style="background: var(--notion-bg-secondary); padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <div style="font-size: 24px; font-weight: bold; color: var(--notion-text); margin-bottom: 10px;">
+                ¥500
+            </div>
+            <div style="color: var(--notion-text-secondary); font-size: 14px;">
+                追加ダウンロードパス（1年間）
+            </div>
+        </div>
+
+        <div style="text-align: left; margin: 20px 0; padding: 20px; background: #fff3cd; border-radius: 8px;">
+            <div style="font-weight: bold; margin-bottom: 10px; color: #856404;">
+                📌 データ保管期限
+            </div>
+            <div style="color: #856404; font-size: 14px;">
+                残り ${remainingDays > 0 ? remainingDays + '日' : '期限切れ間近'}
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 30px;">
+            <button id="purchasePassBtn" class="btn btn-primary" style="padding: 15px; font-size: 16px;">
+                💳 追加ダウンロードパスを購入（¥500）
+            </button>
+
+            <div style="margin: 15px 0; color: var(--notion-text-secondary); font-size: 14px;">
+                または、商品注文でダウンロード無料
+            </div>
+
+            <button id="orderPhotobookFromExpired" class="btn" style="padding: 12px; background: var(--notion-purple); color: white;">
+                📖 フォトブックを注文する
+            </button>
+
+            <button id="closeExpiredBtn" class="btn" style="margin-top: 10px; background: var(--notion-hover);">
+                閉じる
+            </button>
+        </div>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+    // イベントリスナー
+    document.getElementById('purchasePassBtn').addEventListener('click', () => {
+        // 決済処理（プレースホルダー）
+        alert('決済機能は準備中です。\n実装時にStripeなどの決済サービスと連携します。');
+    });
+
+    document.getElementById('orderPhotobookFromExpired').addEventListener('click', () => {
+        document.body.removeChild(modal);
+        showOrderScreen('photobook', selectedPhotos);
+    });
+
+    document.getElementById('closeExpiredBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+}
+
+// ダウンロード後のアップセル画面
+function showPostDownloadUpsell(selectedPhotos) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 20px;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        max-width: 700px;
+        width: 100%;
+        text-align: center;
+    `;
+
+    content.innerHTML = `
+        <div style="font-size: 80px; margin-bottom: 20px;">✅</div>
+        <h2 style="margin: 0 0 10px 0; color: var(--notion-text);">ダウンロード完了！</h2>
+        <p style="color: var(--notion-text-secondary); margin: 20px 0;">
+            ${selectedPhotos.length}枚の写真をダウンロードしました。
+        </p>
+
+        <div style="background: var(--notion-bg-secondary); padding: 25px; border-radius: 8px; margin: 30px 0;">
+            <div style="font-size: 18px; font-weight: 600; color: var(--notion-text); margin-bottom: 15px;">
+                📸 思い出をカタチに
+            </div>
+            <p style="color: var(--notion-text-secondary); font-size: 14px; margin-bottom: 20px;">
+                選んでいただいた写真で、素敵なフォトブックや<br>
+                プリントを作成しませんか？
+            </p>
+
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button id="upsellPhotobookBtn" class="btn" style="padding: 12px 20px; background: var(--notion-purple); color: white;">
+                    📖 フォトブック
+                </button>
+                <button id="upsellPrintsBtn" class="btn" style="padding: 12px 20px; background: var(--notion-blue); color: white;">
+                    🖼️ プリント
+                </button>
+                <button id="upsellAlbumBtn" class="btn" style="padding: 12px 20px; background: var(--notion-green); color: white;">
+                    📚 アルバム
+                </button>
+            </div>
+        </div>
+
+        <div style="background: #e8f4fd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <div style="font-size: 14px; color: #0c5aa6;">
+                💡 再ダウンロードは7日間無料です
+            </div>
+        </div>
+
+        <button id="closeUpsellBtn" class="btn" style="margin-top: 15px; background: var(--notion-hover);">
+            今は注文しない
+        </button>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+    // イベントリスナー
+    document.getElementById('upsellPhotobookBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+        showOrderScreen('photobook', selectedPhotos);
+    });
+
+    document.getElementById('upsellPrintsBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+        showOrderScreen('prints', selectedPhotos);
+    });
+
+    document.getElementById('upsellAlbumBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+        showOrderScreen('album', selectedPhotos);
+    });
+
+    document.getElementById('closeUpsellBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+}
+
