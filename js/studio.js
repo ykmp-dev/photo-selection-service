@@ -177,8 +177,8 @@ async function createGallery() {
         // ギャラリーリストを更新
         await loadGalleries();
 
-        // メール文面を表示
-        showEmailTemplate(gallery.id, galleryName, galleryPassword, totalFiles);
+        // メール文面を表示（平文パスワードを使用）
+        showEmailTemplate(gallery.id, galleryName, gallery.plainPassword || galleryPassword, totalFiles);
 
     } catch (error) {
         console.error('ギャラリー作成エラー:', error);
@@ -211,8 +211,8 @@ async function loadGalleries() {
             const item = document.createElement('div');
             item.className = 'gallery-item';
 
-            const passwordDisplay = gallery.password_hash ?
-                `<div style="margin-top: 5px; font-size: 0.9em; color: #667eea;">パスワード: <strong>${gallery.password_hash}</strong></div>` : '';
+            const passwordDisplay = gallery.decryptedPassword ?
+                `<div style="margin-top: 5px; font-size: 0.9em; color: #667eea;">パスワード: <strong>${gallery.decryptedPassword}</strong></div>` : '';
 
             item.innerHTML = `
                 <div class="gallery-info">

@@ -68,8 +68,9 @@ function setupPasswordAuth() {
     authButton.addEventListener('click', async () => {
         const enteredPassword = passwordInput.value;
 
-        // パスワード照合（簡易版：ハッシュ化せず直接比較）
-        if (enteredPassword === currentGallery.password_hash) {
+        // パスワード照合（暗号化されたパスワードと復号化して比較）
+        const correctPassword = currentGallery.decryptedPassword || currentGallery.password_hash;
+        if (enteredPassword === correctPassword) {
             authSection.style.display = 'none';
             await showGallery();
         } else {

@@ -3,16 +3,121 @@ class SupabasePhotoStorage {
     constructor() {
         this.supabase = window.supabaseClient;
         this.bucket = 'photos';
+        // 暗号化キー（本番環境では環境変数などで管理すべき）
+        this.encryptionKey = 'photo-select-service-2024-secure-key';
+    }
+
+    // パスワードを暗号化
+    async encryptPassword(password) {
+        if (!password) return null;
+
+        try {
+            // キーを生成
+            const encoder = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw',
+                encoder.encode(this.encryptionKey),
+                'PBKDF2',
+                false,
+                ['deriveBits', 'deriveKey']
+            );
+
+            const key = await crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: encoder.encode('photo-select-salt'),
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                },
+                keyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt', 'decrypt']
+            );
+
+            // パスワードを暗号化
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const encodedPassword = encoder.encode(password);
+            const encrypted = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv: iv },
+                key,
+                encodedPassword
+            );
+
+            // IVと暗号化データを結合してBase64エンコード
+            const combined = new Uint8Array(iv.length + encrypted.byteLength);
+            combined.set(iv, 0);
+            combined.set(new Uint8Array(encrypted), iv.length);
+
+            return btoa(String.fromCharCode.apply(null, combined));
+        } catch (error) {
+            console.error('暗号化エラー:', error);
+            throw error;
+        }
+    }
+
+    // パスワードを復号化
+    async decryptPassword(encryptedPassword) {
+        if (!encryptedPassword) return null;
+
+        try {
+            // キーを生成
+            const encoder = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw',
+                encoder.encode(this.encryptionKey),
+                'PBKDF2',
+                false,
+                ['deriveBits', 'deriveKey']
+            );
+
+            const key = await crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: encoder.encode('photo-select-salt'),
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                },
+                keyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt', 'decrypt']
+            );
+
+            // Base64デコードしてIVと暗号化データを分離
+            const combined = Uint8Array.from(atob(encryptedPassword), c => c.charCodeAt(0));
+            const iv = combined.slice(0, 12);
+            const encrypted = combined.slice(12);
+
+            // 復号化
+            const decrypted = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: iv },
+                key,
+                encrypted
+            );
+
+            const decoder = new TextDecoder();
+            return decoder.decode(decrypted);
+        } catch (error) {
+            console.error('復号化エラー:', error);
+            // 復号化に失敗した場合は元の値を返す（既存の平文パスワード対応）
+            return encryptedPassword;
+        }
     }
 
     // ギャラリーを作成
     async createGallery(galleryData) {
         try {
+            // パスワードを暗号化
+            const encryptedPassword = galleryData.password
+                ? await this.encryptPassword(galleryData.password)
+                : null;
+
             const { data, error } = await this.supabase
                 .from('galleries')
                 .insert([{
                     name: galleryData.name,
-                    password_hash: galleryData.password || null,
+                    password_hash: encryptedPassword,
                     expires_at: galleryData.expiresAt || this.getDefaultExpiryDate(),
                     max_selections: 30
                 }])
@@ -20,7 +125,12 @@ class SupabasePhotoStorage {
                 .single();
 
             if (error) throw error;
-            return data;
+
+            // 管理画面用に平文パスワードも返す
+            return {
+                ...data,
+                plainPassword: galleryData.password
+            };
         } catch (error) {
             console.error('ギャラリー作成エラー:', error);
             throw error;
@@ -106,6 +216,16 @@ class SupabasePhotoStorage {
                 .single();
 
             if (error) throw error;
+
+            // パスワードを復号化（クライアント認証用に暗号化されたものも保持）
+            if (data.password_hash) {
+                const decryptedPassword = await this.decryptPassword(data.password_hash);
+                return {
+                    ...data,
+                    decryptedPassword: decryptedPassword
+                };
+            }
+
             return data;
         } catch (error) {
             console.error('ギャラリー取得エラー:', error);
@@ -122,7 +242,22 @@ class SupabasePhotoStorage {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            return data;
+
+            // すべてのギャラリーのパスワードを復号化
+            const decryptedGalleries = await Promise.all(
+                data.map(async (gallery) => {
+                    if (gallery.password_hash) {
+                        const decryptedPassword = await this.decryptPassword(gallery.password_hash);
+                        return {
+                            ...gallery,
+                            decryptedPassword: decryptedPassword
+                        };
+                    }
+                    return gallery;
+                })
+            );
+
+            return decryptedGalleries;
         } catch (error) {
             console.error('ギャラリー一覧取得エラー:', error);
             throw error;
