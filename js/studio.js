@@ -339,12 +339,14 @@ async function deleteGallery(galleryId) {
     }
 
     try {
+        console.log('ギャラリー削除開始:', galleryId);
         await supabaseStorage.deleteGallery(galleryId);
+        console.log('ギャラリー削除完了');
         await loadGalleries();
         alert('ギャラリーを削除しました');
     } catch (error) {
-        console.error('ギャラリー削除エラー:', error);
-        alert('ギャラリーの削除中にエラーが発生しました');
+        console.error('ギャラリー削除エラー詳細:', error);
+        alert(`ギャラリーの削除中にエラーが発生しました:\n${error.message || error}`);
     }
 }
 
