@@ -249,3 +249,5 @@ class SupabasePhotoStorage {
 
 // グローバルインスタンス
 const supabaseStorage = new SupabasePhotoStorage();
+window.supabaseStorage = supabaseStorage;
+console.log('supabaseStorage初期化完了');
