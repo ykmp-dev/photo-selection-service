@@ -10,6 +10,13 @@ function initializeStudio() {
     const uploadArea = document.getElementById('uploadArea');
     const fileInput = document.getElementById('fileInput');
     const createGalleryBtn = document.getElementById('createGallery');
+    const generatePasswordBtn = document.getElementById('generatePassword');
+
+    // パスワード自動生成
+    generatePasswordBtn.addEventListener('click', () => {
+        const password = generateRandomPassword();
+        document.getElementById('galleryPassword').value = password;
+    });
 
     // ドラッグ&ドロップイベント
     uploadArea.addEventListener('dragover', (e) => {
@@ -170,7 +177,8 @@ async function createGallery() {
         // ギャラリーリストを更新
         await loadGalleries();
 
-        alert(`ギャラリー「${galleryName}」を作成しました！\n${totalFiles}枚の写真をアップロードしました。`);
+        // メール文面を表示
+        showEmailTemplate(gallery.id, galleryName, galleryPassword, totalFiles);
 
     } catch (error) {
         console.error('ギャラリー作成エラー:', error);
@@ -250,6 +258,8 @@ async function viewResults(galleryId) {
         const photos = await supabaseStorage.getGalleryPhotos(galleryId);
         const selectedPhotoIds = await supabaseStorage.getSelections(galleryId);
 
+        console.log('結果確認:', { gallery, photos: photos.length, selectedPhotoIds });
+
         if (!gallery) {
             alert('ギャラリーが見つかりません');
             return;
@@ -266,8 +276,8 @@ async function viewResults(galleryId) {
             alert(message);
         }
     } catch (error) {
-        console.error('結果確認エラー:', error);
-        alert('結果の確認中にエラーが発生しました');
+        console.error('結果確認エラー詳細:', error);
+        alert('結果の確認中にエラーが発生しました\n\nエラー: ' + (error.message || error));
     }
 }
 
@@ -332,4 +342,108 @@ async function deleteGallery(galleryId) {
         console.error('ギャラリー削除エラー:', error);
         alert('ギャラリーの削除中にエラーが発生しました');
     }
+}
+
+// パスワード生成関数（8文字、覚えやすい英数字）
+function generateRandomPassword() {
+    const chars = 'abcdefghijkmnopqrstuvwxyz23456789'; // 紛らわしい文字を除外 (l, 1, 0, o)
+    const length = 8;
+    let password = '';
+    for (let i = 0; i < length; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+}
+
+// メール文面テンプレートを表示
+function showEmailTemplate(galleryId, galleryName, password, photoCount) {
+    const url = `${window.location.origin}${window.location.pathname.replace('index.html', '')}client.html?gallery=${galleryId}`;
+
+    const passwordText = password ? `パスワード: ${password}\n` : '';
+    const emailBody = `${galleryName}様
+
+いつもご利用いただきありがとうございます。
+撮影写真をアップロードいたしました。
+
+以下のURLより写真をご確認いただき、お気に入りの写真を最大30枚までお選びください。
+
+【写真選択ページ】
+${url}
+
+${passwordText}
+【写真枚数】
+${photoCount}枚
+
+【選択期限】
+ご都合の良い時にお選びください
+
+ご不明な点がございましたら、お気軽にお問い合わせください。
+
+よろしくお願いいたします。`;
+
+    // モーダルを表示
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 20px;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 600px;
+        width: 100%;
+        max-height: 80vh;
+        overflow-y: auto;
+    `;
+
+    content.innerHTML = `
+        <h2 style="margin-top: 0; color: #333;">✅ ギャラリー作成完了</h2>
+        <p style="color: #666;">お客様への送信用メール文面です。必要に応じて編集してお使いください。</p>
+        <textarea id="emailTemplate" style="width: 100%; min-height: 300px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: sans-serif; font-size: 14px; line-height: 1.6; resize: vertical;">${emailBody}</textarea>
+        <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button id="copyEmailBtn" class="btn btn-primary" style="flex: 1; min-width: 150px;">📋 メール文面をコピー</button>
+            <button id="copyUrlBtn" class="btn" style="flex: 1; min-width: 150px;">🔗 URLのみコピー</button>
+            <button id="closeModalBtn" class="btn" style="background: #e53e3e; color: white;">閉じる</button>
+        </div>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+    // イベントリスナー
+    document.getElementById('copyEmailBtn').addEventListener('click', () => {
+        const textarea = document.getElementById('emailTemplate');
+        textarea.select();
+        navigator.clipboard.writeText(textarea.value).then(() => {
+            alert('メール文面をコピーしました！');
+        });
+    });
+
+    document.getElementById('copyUrlBtn').addEventListener('click', () => {
+        navigator.clipboard.writeText(url).then(() => {
+            alert('URLをコピーしました！');
+        });
+    });
+
+    document.getElementById('closeModalBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
 }

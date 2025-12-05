@@ -163,7 +163,16 @@ async function togglePhotoSelection(index) {
 }
 
 function updateSelectionCount() {
-    document.getElementById('selectedCount').textContent = selectedPhotoIds.size;
+    const count = selectedPhotoIds.size;
+    document.getElementById('selectedCount').textContent = count;
+    document.getElementById('floatingCount').textContent = count;
+
+    // カウントに応じてアニメーション
+    const floatingCounter = document.getElementById('floatingCounter');
+    floatingCounter.style.transform = 'scale(1.1)';
+    setTimeout(() => {
+        floatingCounter.style.transform = 'scale(1)';
+    }, 200);
 }
 
 async function downloadSelectedPhotos() {
