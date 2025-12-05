@@ -4,6 +4,52 @@ let currentPhotos = [];
 let selectedPhotoIds = new Set();
 let currentPhotoIndex = 0;
 
+// 汎用エラーモーダル表示関数
+function showErrorModal(title, message) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 20px;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 500px;
+        width: 100%;
+        text-align: center;
+    `;
+
+    content.innerHTML = `
+        <div style="font-size: 60px; margin-bottom: 15px;">⚠️</div>
+        <h2 style="margin: 0 0 15px 0; color: var(--notion-text);">${title}</h2>
+        <p style="color: var(--notion-text-secondary); margin: 0 0 25px 0; line-height: 1.6;">${message}</p>
+        <button id="errorModalCloseBtn" class="btn btn-primary" style="padding: 12px 30px;">
+            OK
+        </button>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+    const closeModal = () => document.body.removeChild(modal);
+    document.getElementById('errorModalCloseBtn').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOMContentLoaded - client.js起動');
     console.log('supabaseClient:', window.supabaseClient);
@@ -125,7 +171,7 @@ async function showGallery() {
         console.log('showGallery完了');
     } catch (error) {
         console.error('ギャラリー表示エラー:', error);
-        alert('ギャラリーの表示中にエラーが発生しました。\n\nエラー: ' + (error.message || error));
+        showErrorModal('ギャラリー表示エラー', 'ギャラリーの表示中にエラーが発生しました。<br><br>エラー: ' + (error.message || error));
     }
 }
 
@@ -173,7 +219,7 @@ async function togglePhotoSelection(index) {
     // 選択する場合（現在未選択 → 選択）
     if (!isCurrentlySelected) {
         if (selectedPhotoIds.size >= MAX_SELECTIONS) {
-            alert(`最大${MAX_SELECTIONS}枚までしか選択できません。\n他の写真を選択する場合は、先に選択済みの写真を解除してください。`);
+            showErrorModal('選択上限に達しました', `最大${MAX_SELECTIONS}枚までしか選択できません。<br>他の写真を選択する場合は、先に選択済みの写真を解除してください。`);
             return;
         }
     }
@@ -192,7 +238,7 @@ async function togglePhotoSelection(index) {
         updateSelectionCount();
     } catch (error) {
         console.error('選択の切り替えエラー:', error);
-        alert('選択の保存中にエラーが発生しました。');
+        showErrorModal('選択エラー', '選択の保存中にエラーが発生しました。');
     }
 }
 
@@ -304,7 +350,7 @@ function showConfirmationModal(selectedPhotos) {
 
         } catch (error) {
             console.error('確定エラー:', error);
-            alert('確定処理中にエラーが発生しました。\n\nエラー: ' + (error.message || error));
+            showErrorModal('確定エラー', '確定処理中にエラーが発生しました。<br><br>エラー: ' + (error.message || error));
             document.getElementById('confirmSubmitBtn').disabled = false;
             document.getElementById('confirmSubmitBtn').textContent = '確定する';
         }
@@ -347,7 +393,7 @@ function showSuccessScreen(selectedPhotos) {
         <div style="font-size: 80px; margin-bottom: 20px;">✅</div>
         <h2 style="margin: 0 0 10px 0; color: #333;">お写真セレクトありがとうございました。</h2>
         <p style="color: #666; margin: 20px 0;">
-            ${selectedPhotos.length}枚の写真を選択いただきました。<br>
+            ${selectedPhotos.length > 0 ? selectedPhotos.length + '枚の写真を選択いただきました。' : 'ご確認ありがとうございました。'}<br>
             次のステップをお選びください。
         </p>
 
@@ -497,7 +543,7 @@ async function downloadSelectedPhotos(selectedPhotos) {
         console.error('ダウンロードエラー:', error);
         const msg = document.getElementById('downloadMessage');
         if (msg) document.body.removeChild(msg);
-        alert('ダウンロード中にエラーが発生しました。\nもう一度お試しください。');
+        showErrorModal('ダウンロードエラー', 'ダウンロード中にエラーが発生しました。<br>もう一度お試しください。');
     }
 }
 
@@ -829,7 +875,7 @@ function showDownloadExpiredScreen(selectedPhotos) {
     // イベントリスナー
     document.getElementById('purchasePassBtn').addEventListener('click', () => {
         // 決済処理（プレースホルダー）
-        alert('決済機能は準備中です。\n実装時にStripeなどの決済サービスと連携します。');
+        showErrorModal('準備中', '決済機能は準備中です。<br>実装時にStripeなどの決済サービスと連携します。');
     });
 
     document.getElementById('orderPhotobookFromExpired').addEventListener('click', () => {
