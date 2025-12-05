@@ -111,7 +111,6 @@ async function showGallery() {
 
         console.log('イベントリスナー設定');
         // イベントリスナー
-        document.getElementById('downloadSelection').addEventListener('click', downloadSelectedPhotos);
         document.getElementById('submitSelection').addEventListener('click', submitSelection);
 
         // ライトボックスの設定
@@ -208,72 +207,6 @@ function updateSelectionCount() {
     setTimeout(() => {
         floatingCounter.style.transform = 'scale(1)';
     }, 200);
-}
-
-async function downloadSelectedPhotos() {
-    const selectedPhotos = currentPhotos.filter(p => selectedPhotoIds.has(p.id));
-
-    if (selectedPhotos.length === 0) {
-        alert('写真が選択されていません。\nダウンロードする写真を選択してください。');
-        return;
-    }
-
-    try {
-        // ダウンロードボタンを無効化
-        const downloadBtn = document.getElementById('downloadSelection');
-        downloadBtn.disabled = true;
-        downloadBtn.textContent = 'ダウンロード準備中...';
-
-        // JSZipインスタンスを作成
-        const zip = new JSZip();
-        const folder = zip.folder('selected_photos');
-
-        // 各写真をダウンロードしてZIPに追加
-        for (let i = 0; i < selectedPhotos.length; i++) {
-            const photo = selectedPhotos[i];
-            downloadBtn.textContent = `ダウンロード中... (${i + 1}/${selectedPhotos.length})`;
-
-            try {
-                // SupabaseのURLから画像をfetch
-                const response = await fetch(photo.url);
-                const blob = await response.blob();
-
-                // ZIPに追加
-                folder.file(photo.file_name, blob);
-            } catch (error) {
-                console.error(`写真 ${photo.file_name} のダウンロードエラー:`, error);
-                // 失敗しても続行
-            }
-        }
-
-        // ZIPファイルを生成
-        downloadBtn.textContent = 'ZIP生成中...';
-        const zipBlob = await zip.generateAsync({ type: 'blob' });
-
-        // ダウンロードリンクを作成
-        const url = URL.createObjectURL(zipBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${currentGallery.name || 'selected_photos'}_${selectedPhotos.length}枚.zip`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        // ボタンを元に戻す
-        downloadBtn.disabled = false;
-        downloadBtn.textContent = 'ダウンロード';
-
-        alert(`${selectedPhotos.length}枚の写真をダウンロードしました！`);
-    } catch (error) {
-        console.error('ダウンロードエラー:', error);
-        alert('ダウンロード中にエラーが発生しました。\nもう一度お試しください。');
-
-        // ボタンを元に戻す
-        const downloadBtn = document.getElementById('downloadSelection');
-        downloadBtn.disabled = false;
-        downloadBtn.textContent = 'ダウンロード';
-    }
 }
 
 async function submitSelection() {

@@ -323,11 +323,10 @@ class SupabasePhotoStorage {
                 .from('galleries')
                 .update({ confirmed_at: new Date().toISOString() })
                 .eq('id', galleryId)
-                .select()
-                .single();
+                .select();
 
             if (error) throw error;
-            return data;
+            return data && data.length > 0 ? data[0] : null;
         } catch (error) {
             console.error('選択確定エラー:', error);
             throw error;

@@ -256,13 +256,19 @@ header h1 {
 }
 
 .controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
     padding: 20px;
-    background: #f8f9fa;
-    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    border-top: 1px solid #e0e0e0;
 }
 
 .selection-info {
@@ -281,6 +287,7 @@ header h1 {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 20px;
+    padding-bottom: 120px; /* 固定コントロールバーのスペースを確保 */
 }
 
 .photo-item {
@@ -304,6 +311,20 @@ header h1 {
     object-fit: cover;
 }
 
+/* 選択された写真の緑オーバーレイ */
+.photo-item.selected::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(72, 187, 120, 0.3);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* 選択された写真のチェックマーク */
 .photo-item.selected::after {
     content: '✓';
     position: absolute;
@@ -320,6 +341,13 @@ header h1 {
     font-size: 1.5rem;
     font-weight: bold;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 2;
+}
+
+/* 選択された写真の陥没効果 */
+.photo-item.selected {
+    transform: scale(0.95);
+    box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* ライトボックス */
