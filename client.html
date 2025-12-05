@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>写真セレクトサービス - お客様選択画面</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container client-view">
+        <header>
+            <h1>📸 写真セレクト</h1>
+            <p class="subtitle" id="galleryTitle">ギャラリー</p>
+        </header>
+
+        <div id="authSection" class="auth-section">
+            <h2>パスワードを入力してください</h2>
+            <input type="password" id="passwordInput" placeholder="パスワード">
+            <button id="authButton" class="btn btn-primary">アクセス</button>
+            <p id="authError" class="error-message" style="display: none;"></p>
+        </div>
+
+        <main id="mainContent" style="display: none;">
+            <div class="controls">
+                <div class="selection-info">
+                    選択: <span id="selectedCount">0</span>枚 / <span id="totalCount">0</span>枚
+                </div>
+                <button id="submitSelection" class="btn btn-success">選択を送信</button>
+            </div>
+
+            <div id="photoGrid" class="photo-grid"></div>
+        </main>
+
+        <div id="lightbox" class="lightbox" style="display: none;">
+            <span class="lightbox-close">&times;</span>
+            <img class="lightbox-content" id="lightboxImg">
+            <div class="lightbox-controls">
+                <button id="prevPhoto" class="btn">前へ</button>
+                <button id="toggleSelection" class="btn btn-primary">選択切替</button>
+                <button id="nextPhoto" class="btn">次へ</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/client.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "photo-selection-service",
+  "version": "1.0.0",
+  "description": "写真セレクトWebサービス - フォトスタジオ向け",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "start": "python3 -m http.server 8000"
+  },
+  "keywords": ["photo", "selection", "studio"],
+  "author": "",
+  "license": "MIT"
+}
