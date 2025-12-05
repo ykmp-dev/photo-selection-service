@@ -422,3 +422,61 @@ header h1 {
     font-size: 24px;
     color: #ffd700;
 }
+
+/* スクリーンショット防止とセキュリティ */
+.client-view {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.client-view img {
+    pointer-events: none;
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+}
+
+/* 写真に透かし */
+.photo-item {
+    position: relative;
+}
+
+.photo-item::before {
+    content: 'SAMPLE';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    font-size: 40px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.3);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    z-index: 10;
+    white-space: nowrap;
+}
+
+.lightbox-content {
+    position: relative;
+}
+
+/* ライトボックス内の透かし */
+.lightbox::after {
+    content: 'SAMPLE PREVIEW';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    font-size: 60px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.2);
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    z-index: 1001;
+    white-space: nowrap;
+}

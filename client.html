@@ -56,5 +56,40 @@
     <script src="js/supabase-storage.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/client.js"></script>
+    <script>
+        // スクリーンショット防止対策
+        document.addEventListener('DOMContentLoaded', () => {
+            // 右クリック無効化
+            document.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                return false;
+            });
+
+            // ドラッグ無効化
+            document.addEventListener('dragstart', (e) => {
+                e.preventDefault();
+                return false;
+            });
+
+            // キーボードショートカット無効化（PrintScreen等）
+            document.addEventListener('keyup', (e) => {
+                if (e.key === 'PrintScreen') {
+                    navigator.clipboard.writeText('');
+                    alert('スクリーンショットは禁止されています。');
+                }
+            });
+
+            // 開発者ツール検知（簡易版）
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'F12' ||
+                    (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                    (e.ctrlKey && e.shiftKey && e.key === 'J') ||
+                    (e.ctrlKey && e.key === 'U')) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+        });
+    </script>
 </body>
 </html>

@@ -181,6 +181,24 @@ class SupabasePhotoStorage {
         }
     }
 
+    // 選択を確定する
+    async confirmSelection(galleryId) {
+        try {
+            const { data, error } = await this.supabase
+                .from('galleries')
+                .update({ confirmed_at: new Date().toISOString() })
+                .eq('id', galleryId)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('選択確定エラー:', error);
+            throw error;
+        }
+    }
+
     // ギャラリーを削除
     async deleteGallery(galleryId) {
         try {
