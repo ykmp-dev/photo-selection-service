@@ -23,7 +23,10 @@
 
                 <div class="form-group">
                     <label for="galleryPassword">パスワード（任意）</label>
-                    <input type="text" id="galleryPassword" placeholder="お客様用のパスワード">
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="galleryPassword" placeholder="お客様用のパスワード" style="flex: 1;">
+                        <button type="button" id="generatePassword" class="btn" style="white-space: nowrap;">自動生成</button>
+                    </div>
                 </div>
 
                 <div class="upload-area" id="uploadArea">

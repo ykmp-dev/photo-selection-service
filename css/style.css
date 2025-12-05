@@ -395,4 +395,30 @@ header h1 {
         flex-direction: column;
         gap: 15px;
     }
+
+    .floating-counter {
+        font-size: 14px;
+        padding: 10px 15px;
+    }
+}
+
+/* スクロール追従カウンター */
+.floating-counter {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #667eea;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 50px;
+    font-size: 18px;
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.floating-counter span {
+    font-size: 24px;
+    color: #ffd700;
 }
