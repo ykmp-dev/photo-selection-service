@@ -336,23 +336,63 @@ class SupabasePhotoStorage {
     // ギャラリーを削除
     async deleteGallery(galleryId) {
         try {
+            console.log('=== 削除処理開始 ===');
+            console.log('ギャラリーID:', galleryId);
+
             // 関連する写真をStorageから削除
+            console.log('写真一覧を取得中...');
             const photos = await this.getGalleryPhotos(galleryId);
-            for (const photo of photos) {
-                await this.supabase.storage
-                    .from(this.bucket)
-                    .remove([photo.storage_path]);
+            console.log(`取得した写真数: ${photos.length}枚`);
+
+            if (photos.length > 0) {
+                console.log('Storageから写真を削除中...');
+                for (const photo of photos) {
+                    console.log(`削除中: ${photo.storage_path}`);
+                    const { data: removeData, error: removeError } = await this.supabase.storage
+                        .from(this.bucket)
+                        .remove([photo.storage_path]);
+
+                    if (removeError) {
+                        console.error(`Storage削除エラー (${photo.storage_path}):`, removeError);
+                    } else {
+                        console.log(`Storage削除成功:`, removeData);
+                    }
+                }
             }
 
             // データベースから削除（CASCADE設定により関連データも削除される）
-            const { error } = await this.supabase
+            console.log('データベースから削除中...');
+            const { data: deleteData, error: deleteError } = await this.supabase
                 .from('galleries')
                 .delete()
-                .eq('id', galleryId);
+                .eq('id', galleryId)
+                .select(); // 削除されたデータを返す
 
-            if (error) throw error;
+            console.log('削除結果 - data:', deleteData);
+            console.log('削除結果 - error:', deleteError);
+
+            if (deleteError) {
+                console.error('データベース削除エラー詳細:', {
+                    message: deleteError.message,
+                    details: deleteError.details,
+                    hint: deleteError.hint,
+                    code: deleteError.code
+                });
+                throw deleteError;
+            }
+
+            if (!deleteData || deleteData.length === 0) {
+                console.warn('警告: 削除対象のデータが見つかりませんでした');
+                throw new Error('ギャラリーが見つかりませんでした。既に削除されている可能性があります。');
+            }
+
+            console.log('=== 削除処理完了 ===');
+            return deleteData;
         } catch (error) {
-            console.error('ギャラリー削除エラー:', error);
+            console.error('=== ギャラリー削除エラー ===');
+            console.error('エラーオブジェクト:', error);
+            console.error('エラーメッセージ:', error.message);
+            console.error('エラー詳細:', error.details);
             throw error;
         }
     }
