@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>選択済み写真ギャラリー</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/metropolis-typeface@1.0.0/css/metropolis.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container client-view">
+        <header>
+            <h1>📸 選択済み写真ギャラリー</h1>
+            <p class="subtitle" id="galleryTitle">ギャラリー</p>
+        </header>
+
+        <main id="mainContent">
+            <div style="background: var(--notion-bg-secondary); padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+                <p style="font-size: 18px; font-weight: 600; color: var(--notion-text); margin: 0 0 10px 0;">
+                    選択された写真: <span id="photoCount">0</span>枚
+                </p>
+                <p style="color: var(--notion-text-secondary); font-size: 14px; margin: 0;">
+                    写真をクリックして1枚ずつダウンロード、またはZIPで一括ダウンロードできます
+                </p>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 30px;">
+                <button id="downloadAllZipBtn" class="btn btn-success" style="padding: 15px 40px; font-size: 16px;">
+                    📦 全ての写真をZIPでダウンロード
+                </button>
+            </div>
+
+            <div id="photoGrid" class="photo-grid"></div>
+        </main>
+
+        <!-- ライトボックス -->
+        <div id="lightbox" class="lightbox" style="display: none;">
+            <span class="lightbox-close">&times;</span>
+            <img class="lightbox-content" id="lightboxImg">
+            <div class="lightbox-controls">
+                <button id="prevPhoto" class="btn">前へ</button>
+                <button id="downloadSingleBtn" class="btn btn-primary">この写真をダウンロード</button>
+                <button id="nextPhoto" class="btn">次へ</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/supabase-storage.js"></script>
+    <script src="js/selected-gallery.js"></script>
+</body>
+</html>
