@@ -275,28 +275,296 @@ async function updateCurrentGalleryInfo() {
     if (!currentGallery) return;
 
     try {
-        // 写真一覧を取得してカテゴリ毎に集計
+        // 写真一覧を取得してカテゴリ毎にグループ化
         const photos = await supabaseStorage.getGalleryPhotos(currentGallery.id);
-        const categoryCount = {};
+        const categoryGroups = {};
         photos.forEach(photo => {
             const cat = photo.category || '未分類';
-            categoryCount[cat] = (categoryCount[cat] || 0) + 1;
+            if (!categoryGroups[cat]) {
+                categoryGroups[cat] = [];
+            }
+            categoryGroups[cat].push(photo);
         });
-
-        const categoryListHTML = Object.entries(categoryCount)
-            .map(([cat, count]) => `<li>${cat}: ${count}枚</li>`)
-            .join('');
 
         const infoDiv = document.getElementById('currentGalleryInfo');
         infoDiv.innerHTML = `
             <p style="margin: 0 0 10px 0;"><strong>名前:</strong> ${currentGallery.name}</p>
             <p style="margin: 0 0 10px 0;"><strong>選択可能枚数:</strong> ${currentGallery.max_selections || 30}枚</p>
-            <p style="margin: 0 0 5px 0;"><strong>追加済み写真:</strong> ${photos.length}枚</p>
-            ${categoryListHTML ? `<ul style="margin: 5px 0 0 20px; padding: 0;">${categoryListHTML}</ul>` : ''}
+            <p style="margin: 0 0 15px 0;"><strong>追加済み写真:</strong> ${photos.length}枚</p>
+            <div id="categoryAccordion"></div>
         `;
+
+        // カテゴリごとのアコーディオンを作成
+        const accordion = document.getElementById('categoryAccordion');
+        Object.entries(categoryGroups).forEach(([category, categoryPhotos]) => {
+            const categorySection = createCategorySection(category, categoryPhotos);
+            accordion.appendChild(categorySection);
+        });
+
     } catch (error) {
         console.error('ギャラリー情報取得エラー:', error);
     }
+}
+
+// カテゴリセクションを作成（トグル展開可能）
+function createCategorySection(category, photos) {
+    const section = document.createElement('div');
+    section.style.cssText = 'margin-bottom: 15px; border: 1px solid var(--notion-border); border-radius: 8px; overflow: hidden;';
+
+    const header = document.createElement('div');
+    header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: var(--notion-hover); cursor: pointer; user-select: none;';
+    header.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span class="toggle-icon" style="font-size: 12px; transition: transform 0.2s;">▶</span>
+            <strong>${category}</strong>
+            <span style="color: var(--notion-text-secondary); font-size: 14px;">(${photos.length}枚)</span>
+        </div>
+        <div>
+            <button class="btn add-to-category-btn" style="padding: 4px 12px; font-size: 13px; margin-right: 8px;">📷 追加</button>
+            <button class="btn delete-selected-btn" style="padding: 4px 12px; font-size: 13px; background: var(--notion-red); color: white;">🗑️ 選択削除</button>
+        </div>
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = 'display: none; padding: 15px; background: white;';
+    content.className = 'category-content';
+
+    // 写真グリッド
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px;';
+
+    photos.forEach(photo => {
+        const item = document.createElement('div');
+        item.style.cssText = 'position: relative; aspect-ratio: 1; border: 2px solid transparent; border-radius: 4px; overflow: hidden;';
+        item.className = 'photo-tile';
+        item.dataset.photoId = photo.id;
+
+        item.innerHTML = `
+            <img src="${photo.url}" style="width: 100%; height: 100%; object-fit: cover;">
+            <input type="checkbox" class="photo-checkbox" data-photo-id="${photo.id}" style="position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; cursor: pointer;">
+        `;
+
+        grid.appendChild(item);
+    });
+
+    content.appendChild(grid);
+    section.appendChild(header);
+    section.appendChild(content);
+
+    // トグル機能
+    const toggleIcon = header.querySelector('.toggle-icon');
+    let isOpen = false;
+
+    header.addEventListener('click', (e) => {
+        // ボタンクリックは無視
+        if (e.target.closest('button')) return;
+
+        isOpen = !isOpen;
+        content.style.display = isOpen ? 'block' : 'none';
+        toggleIcon.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+    });
+
+    // 追加ボタン
+    header.querySelector('.add-to-category-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        showAddPhotosDialog(category);
+    });
+
+    // 削除ボタン
+    header.querySelector('.delete-selected-btn').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const checkboxes = content.querySelectorAll('.photo-checkbox:checked');
+        if (checkboxes.length === 0) {
+            alert('削除する写真を選択してください');
+            return;
+        }
+
+        if (!confirm(`${checkboxes.length}枚の写真を削除しますか？`)) {
+            return;
+        }
+
+        try {
+            for (const checkbox of checkboxes) {
+                const photoId = checkbox.dataset.photoId;
+                const photo = photos.find(p => p.id === photoId);
+                if (photo) {
+                    // Storageから削除
+                    await supabaseStorage.supabase.storage
+                        .from(supabaseStorage.bucket)
+                        .remove([photo.file_path]);
+
+                    // DBから削除
+                    await supabaseStorage.supabase
+                        .from('photos')
+                        .delete()
+                        .eq('id', photoId);
+                }
+            }
+
+            alert(`✅ ${checkboxes.length}枚の写真を削除しました`);
+            await updateCurrentGalleryInfo();
+        } catch (error) {
+            console.error('削除エラー:', error);
+            alert('削除に失敗しました');
+        }
+    });
+
+    return section;
+}
+
+// カテゴリに写真を追加するダイアログ
+function showAddPhotosDialog(category) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 20px;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 600px;
+        width: 100%;
+    `;
+
+    content.innerHTML = `
+        <h2 style="margin-top: 0;">「${category}」に写真を追加</h2>
+        <div class="upload-area" id="dialogUploadArea" style="margin: 20px 0; padding: 40px; border: 2px dashed var(--notion-border); border-radius: 8px; text-align: center; cursor: pointer;">
+            <div style="font-size: 48px; margin-bottom: 10px;">📁</div>
+            <p>写真をドラッグ&ドロップ</p>
+            <p style="color: var(--notion-text-secondary); font-size: 14px;">または</p>
+            <label for="dialogFileInput" class="btn btn-primary" style="cursor: pointer; margin-top: 10px;">ファイルを選択</label>
+            <input type="file" id="dialogFileInput" multiple accept="image/*" style="display: none;">
+        </div>
+        <div id="dialogPreviewArea" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; margin: 20px 0;"></div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button id="dialogCancelBtn" class="btn" style="flex: 1;">キャンセル</button>
+            <button id="dialogUploadBtn" class="btn btn-primary" style="flex: 1;" disabled>アップロード</button>
+        </div>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+    let dialogSelectedFiles = [];
+
+    const dialogFileInput = document.getElementById('dialogFileInput');
+    const dialogUploadArea = document.getElementById('dialogUploadArea');
+    const dialogPreviewArea = document.getElementById('dialogPreviewArea');
+    const dialogUploadBtn = document.getElementById('dialogUploadBtn');
+
+    const handleDialogFiles = (files) => {
+        const fileArray = Array.from(files).filter(file => file.type.startsWith('image/'));
+        dialogSelectedFiles.push(...fileArray);
+
+        // プレビュー更新
+        dialogPreviewArea.innerHTML = '';
+        dialogSelectedFiles.forEach((file, index) => {
+            const item = document.createElement('div');
+            item.style.cssText = 'position: relative; aspect-ratio: 1;';
+
+            const img = document.createElement('img');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 4px;';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.textContent = '×';
+            removeBtn.style.cssText = 'position: absolute; top: 2px; right: 2px; background: var(--notion-red); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 14px; line-height: 1;';
+            removeBtn.onclick = () => {
+                dialogSelectedFiles.splice(index, 1);
+                handleDialogFiles([]);
+            };
+
+            item.appendChild(img);
+            item.appendChild(removeBtn);
+            dialogPreviewArea.appendChild(item);
+        });
+
+        dialogUploadBtn.disabled = dialogSelectedFiles.length === 0;
+    };
+
+    dialogFileInput.addEventListener('change', (e) => {
+        handleDialogFiles(e.target.files);
+    });
+
+    dialogUploadArea.addEventListener('click', () => {
+        dialogFileInput.click();
+    });
+
+    dialogUploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dialogUploadArea.style.borderColor = 'var(--notion-blue)';
+    });
+
+    dialogUploadArea.addEventListener('dragleave', () => {
+        dialogUploadArea.style.borderColor = 'var(--notion-border)';
+    });
+
+    dialogUploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dialogUploadArea.style.borderColor = 'var(--notion-border)';
+        handleDialogFiles(e.dataTransfer.files);
+    });
+
+    document.getElementById('dialogCancelBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+
+    dialogUploadBtn.addEventListener('click', async () => {
+        dialogUploadBtn.disabled = true;
+        dialogUploadBtn.textContent = 'アップロード中...';
+
+        try {
+            for (let i = 0; i < dialogSelectedFiles.length; i++) {
+                const file = dialogSelectedFiles[i];
+                dialogUploadBtn.textContent = `アップロード中... (${i + 1}/${dialogSelectedFiles.length})`;
+
+                // EXIF読み取り
+                let rating = 0;
+                try {
+                    if (window.exifr) {
+                        const exifData = await exifr.parse(file, {
+                            xmp: true,
+                            iptc: true,
+                            ifd0: true,
+                            exif: true
+                        });
+                        rating = exifData?.Rating || exifData?.rating || 0;
+                    }
+                } catch (exifError) {
+                    console.log('EXIF読み取りエラー:', exifError);
+                }
+
+                const compressedFile = await supabaseStorage.compressImage(file);
+                await supabaseStorage.uploadPhoto(currentGallery.id, compressedFile, {
+                    rating: rating,
+                    category: category
+                });
+            }
+
+            alert(`✅ ${dialogSelectedFiles.length}枚の写真を追加しました`);
+            document.body.removeChild(modal);
+            await updateCurrentGalleryInfo();
+        } catch (error) {
+            console.error('アップロードエラー:', error);
+            alert('アップロードに失敗しました');
+        }
+    });
 }
 
 // ステップ3: 確定してURLを取得

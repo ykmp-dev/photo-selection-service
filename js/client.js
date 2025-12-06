@@ -113,6 +113,9 @@ function setupPasswordAuth() {
     const passwordInput = document.getElementById('passwordInput');
     const authError = document.getElementById('authError');
 
+    // パスワード入力画面を表示
+    authSection.style.display = 'block';
+
     authButton.addEventListener('click', async () => {
         const enteredPassword = passwordInput.value;
 
@@ -774,13 +777,13 @@ function showSuccessScreen(selectedPhotos) {
         <div style="font-size: 80px; margin-bottom: 20px;">✅</div>
         <h2 style="margin: 0 0 10px 0; color: #333;">お写真セレクトありがとうございました。</h2>
         <p style="color: #666; margin: 20px 0;">
-            ${selectedPhotos.length > 0 ? selectedPhotos.length + '枚の写真を選択いただきました。' : 'ご確認ありがとうございました。'}<br>
+            ${selectedPhotos.length}枚の写真を選択いただきました。<br>
             次のステップをお選びください。
         </p>
 
         <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 30px;">
-            <button id="downloadOnlyBtn" class="option-btn" style="padding: 20px; background: #48bb78; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s;">
-                📥 今回は注文せず完了する（ダウンロード）
+            <button id="viewGalleryBtn" class="option-btn" style="padding: 20px; background: #48bb78; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s;">
+                📸 ギャラリーページで写真をダウンロード
             </button>
 
             <button id="orderPhotobookBtn" class="option-btn" style="padding: 20px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s;">
@@ -797,7 +800,7 @@ function showSuccessScreen(selectedPhotos) {
         </div>
 
         <p style="color: #999; margin-top: 20px; font-size: 14px;">
-            ※ 選択された写真はいつでも後からダウンロードできます
+            ※ ギャラリーページでは1枚ずつ、またはZIPで一括ダウンロードできます
         </p>
     `;
 
@@ -817,10 +820,10 @@ function showSuccessScreen(selectedPhotos) {
         });
     });
 
-    // ダウンロードのみで完了
-    document.getElementById('downloadOnlyBtn').addEventListener('click', async () => {
-        await downloadSelectedPhotos(selectedPhotos);
-        document.body.removeChild(modal);
+    // ギャラリーページへ遷移
+    document.getElementById('viewGalleryBtn').addEventListener('click', () => {
+        const galleryUrl = `${window.location.origin}${window.location.pathname.replace('client.html', '')}selected-gallery.html?gallery=${currentGallery.id}`;
+        window.location.href = galleryUrl;
     });
 
     // フォトブック注文
