@@ -152,6 +152,10 @@ async function showGallery() {
         document.getElementById('mainContent').style.display = 'block';
         document.getElementById('galleryTitle').textContent = currentGallery.name;
 
+        // max_selectionsを表示に反映
+        const maxSelections = currentGallery.max_selections || 30;
+        document.getElementById('maxSelectionsDisplay').textContent = maxSelections;
+
         updatePhotoGrid();
         updateSelectionCount();
 
@@ -212,14 +216,14 @@ function updatePhotoGrid() {
 }
 
 async function togglePhotoSelection(index) {
-    const MAX_SELECTIONS = 30;
+    const maxSelections = currentGallery.max_selections || 30;
     const photo = currentPhotos[index];
     const isCurrentlySelected = selectedPhotoIds.has(photo.id);
 
     // 選択する場合（現在未選択 → 選択）
     if (!isCurrentlySelected) {
-        if (selectedPhotoIds.size >= MAX_SELECTIONS) {
-            showErrorModal('選択上限に達しました', `最大${MAX_SELECTIONS}枚までしか選択できません。<br>他の写真を選択する場合は、先に選択済みの写真を解除してください。`);
+        if (selectedPhotoIds.size >= maxSelections) {
+            showErrorModal('選択上限に達しました', `最大${maxSelections}枚までしか選択できません。<br>他の写真を選択する場合は、先に選択済みの写真を解除してください。`);
             return;
         }
     }

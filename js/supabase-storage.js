@@ -119,7 +119,7 @@ class SupabasePhotoStorage {
                     name: galleryData.name,
                     password_hash: encryptedPassword,
                     expires_at: galleryData.expiresAt || this.getDefaultExpiryDate(),
-                    max_selections: 30
+                    max_selections: galleryData.maxSelections || 30
                 }])
                 .select()
                 .single();
