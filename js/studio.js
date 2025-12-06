@@ -130,9 +130,15 @@ document.addEventListener('DOMContentLoaded', () => {
 async function createGallery() {
     const galleryName = document.getElementById('galleryName').value.trim();
     const galleryPassword = document.getElementById('galleryPassword').value.trim();
+    const maxSelections = parseInt(document.getElementById('maxSelections').value) || 30;
 
     if (!galleryName || selectedFiles.length === 0) {
         alert('ギャラリー名と写真を入力してください');
+        return;
+    }
+
+    if (maxSelections < 1 || maxSelections > 100) {
+        alert('選択可能枚数は1〜100枚の範囲で指定してください');
         return;
     }
 
@@ -150,7 +156,8 @@ async function createGallery() {
         createBtn.textContent = 'ギャラリー作成中...';
         const gallery = await supabaseStorage.createGallery({
             name: galleryName,
-            password: galleryPassword || null
+            password: galleryPassword || null,
+            maxSelections: maxSelections
         });
 
         // 写真を1枚ずつアップロード
@@ -169,6 +176,7 @@ async function createGallery() {
         // フォームをリセット
         document.getElementById('galleryName').value = '';
         document.getElementById('galleryPassword').value = '';
+        document.getElementById('maxSelections').value = '30';
         document.getElementById('fileInput').value = '';
         selectedFiles = [];
         updatePreview();
@@ -178,7 +186,7 @@ async function createGallery() {
         await loadGalleries();
 
         // メール文面を表示（平文パスワードを使用）
-        showEmailTemplate(gallery.id, galleryName, gallery.plainPassword || galleryPassword, totalFiles);
+        showEmailTemplate(gallery.id, galleryName, gallery.plainPassword || galleryPassword, totalFiles, maxSelections);
 
     } catch (error) {
         console.error('ギャラリー作成エラー:', error);
@@ -219,7 +227,7 @@ async function loadGalleries() {
                     <h3>${hasPassword} ${gallery.name}</h3>
                     <div class="gallery-meta">
                         写真: ${photoCount}枚 |
-                        選択済み: ${selectedPhotoIds.length}枚 |
+                        選択済み: ${selectedPhotoIds.length}/${gallery.max_selections || 30}枚 |
                         作成日: ${new Date(gallery.created_at).toLocaleDateString('ja-JP')}
                     </div>
                     ${passwordDisplay}
@@ -415,7 +423,7 @@ function generateRandomPassword() {
 }
 
 // メール文面テンプレートを表示
-function showEmailTemplate(galleryId, galleryName, password, photoCount) {
+function showEmailTemplate(galleryId, galleryName, password, photoCount, maxSelections = 30) {
     const url = `${window.location.origin}${window.location.pathname.replace('index.html', '')}client.html?gallery=${galleryId}`;
 
     const passwordText = password ? `パスワード: ${password}\n` : '';
@@ -424,7 +432,7 @@ function showEmailTemplate(galleryId, galleryName, password, photoCount) {
 いつもご利用いただきありがとうございます。
 撮影写真をアップロードいたしました。
 
-以下のURLより写真をご確認いただき、お気に入りの写真を最大30枚までお選びください。
+以下のURLより写真をご確認いただき、お気に入りの写真を${maxSelections}枚お選びください。
 
 【写真選択ページ】
 ${url}
@@ -432,6 +440,9 @@ ${url}
 ${passwordText}
 【写真枚数】
 ${photoCount}枚
+
+【選択可能枚数】
+${maxSelections}枚
 
 【選択期限】
 ご都合の良い時にお選びください
