@@ -245,24 +245,25 @@ async function togglePhotoSelection(index) {
 function updateSelectionCount() {
     const count = selectedPhotoIds.size;
     document.getElementById('selectedCount').textContent = count;
-    document.getElementById('floatingCount').textContent = count;
-
-    // カウントに応じてアニメーション
-    const floatingCounter = document.getElementById('floatingCounter');
-    floatingCounter.style.transform = 'scale(1.1)';
-    setTimeout(() => {
-        floatingCounter.style.transform = 'scale(1)';
-    }, 200);
 }
 
 async function submitSelection() {
     const selectedCount = selectedPhotoIds.size;
     const selectedPhotos = currentPhotos.filter(p => selectedPhotoIds.has(p.id));
+    const maxSelections = currentGallery.max_selections || 30;
 
     if (selectedCount === 0) {
         if (!confirm('写真が1枚も選択されていません。このまま送信しますか？')) {
             return;
         }
+    }
+
+    if (selectedCount < maxSelections) {
+        showErrorModal(
+            '選択枚数が不足しています',
+            `${maxSelections}枚選択してください。<br>現在の選択数: ${selectedCount}枚`
+        );
+        return;
     }
 
     // 確認画面を表示
@@ -464,6 +465,16 @@ function showSuccessScreen(selectedPhotos) {
 // 選択された写真をダウンロード
 async function downloadSelectedPhotos(selectedPhotos) {
     try {
+        // 30枚チェック
+        const maxSelections = currentGallery.max_selections || 30;
+        if (selectedPhotos.length < maxSelections) {
+            showErrorModal(
+                'ダウンロードできません',
+                `${maxSelections}枚選択した場合のみダウンロードできます。<br>現在の選択数: ${selectedPhotos.length}枚`
+            );
+            return;
+        }
+
         // ダウンロード権限チェック
         const permission = await supabaseStorage.checkDownloadPermission(currentGallery.id);
 
@@ -504,22 +515,44 @@ async function downloadSelectedPhotos(selectedPhotos) {
         const folder = zip.folder('selected_photos');
 
         // 各写真をダウンロードしてZIPに追加
+        let failedCount = 0;
         for (let i = 0; i < selectedPhotos.length; i++) {
             const photo = selectedPhotos[i];
-            document.getElementById('downloadProgress').textContent = `${i + 1} / ${selectedPhotos.length}`;
+            const progressEl = document.getElementById('downloadProgress');
+            if (progressEl) {
+                progressEl.textContent = `${i + 1} / ${selectedPhotos.length}`;
+            }
 
             try {
                 const response = await fetch(photo.url);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
                 const blob = await response.blob();
                 folder.file(photo.file_name, blob);
             } catch (error) {
                 console.error(`写真 ${photo.file_name} のダウンロードエラー:`, error);
+                failedCount++;
             }
         }
 
-        // ZIPファイルを生成
-        document.getElementById('downloadProgress').textContent = 'ZIP生成中...';
-        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        if (failedCount > 0) {
+            console.warn(`${failedCount}枚の写真のダウンロードに失敗しました`);
+        }
+
+        // ZIPファイルを生成（圧縮レベルを下げてメモリ使用量を削減）
+        const progressEl = document.getElementById('downloadProgress');
+        if (progressEl) {
+            progressEl.textContent = 'ZIP生成中...';
+        }
+
+        const zipBlob = await zip.generateAsync({
+            type: 'blob',
+            compression: 'DEFLATE',
+            compressionOptions: {
+                level: 6  // デフォルトの9から下げて高速化・メモリ削減
+            }
+        });
 
         // ダウンロード
         const url = URL.createObjectURL(zipBlob);
@@ -542,8 +575,24 @@ async function downloadSelectedPhotos(selectedPhotos) {
     } catch (error) {
         console.error('ダウンロードエラー:', error);
         const msg = document.getElementById('downloadMessage');
-        if (msg) document.body.removeChild(msg);
-        showErrorModal('ダウンロードエラー', 'ダウンロード中にエラーが発生しました。<br>もう一度お試しください。');
+        if (msg && msg.parentNode) {
+            document.body.removeChild(msg);
+        }
+
+        // エラーの詳細を表示
+        let errorMessage = 'ダウンロード中にエラーが発生しました。';
+
+        if (error.name === 'QuotaExceededError' || error.message.includes('quota')) {
+            errorMessage = 'デバイスの空き容量が不足しています。<br>空き容量を確保してから再度お試しください。';
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            errorMessage = 'ネットワークエラーが発生しました。<br>インターネット接続を確認して再度お試しください。';
+        } else if (error.message.includes('Out of memory')) {
+            errorMessage = 'メモリ不足のため処理できませんでした。<br>他のアプリを閉じてから再度お試しください。';
+        } else {
+            errorMessage += `<br><br>エラー詳細: ${error.message}`;
+        }
+
+        showErrorModal('ダウンロードエラー', errorMessage);
     }
 }
 
@@ -626,9 +675,21 @@ function makeReadOnly() {
         item.style.opacity = '0.8';
     });
 
-    // ボタンを無効化
-    document.getElementById('submitSelection').disabled = true;
-    document.getElementById('submitSelection').textContent = '確定済み';
+    // ボタンを無効化して再ダウンロードボタンに変更
+    const submitBtn = document.getElementById('submitSelection');
+    submitBtn.disabled = false;
+    submitBtn.textContent = '選択した写真をダウンロード';
+    submitBtn.className = 'btn btn-primary';
+
+    // クリックイベントを上書き
+    const newSubmitBtn = submitBtn.cloneNode(true);
+    submitBtn.parentNode.replaceChild(newSubmitBtn, submitBtn);
+
+    newSubmitBtn.addEventListener('click', async () => {
+        // 選択済み写真を取得
+        const selectedPhotos = currentPhotos.filter(p => selectedPhotoIds.has(p.id));
+        await downloadSelectedPhotos(selectedPhotos);
+    });
 
     // メッセージを表示
     const controls = document.querySelector('.controls');
@@ -643,7 +704,7 @@ function makeReadOnly() {
             margin-bottom: 20px;
             text-align: center;
         `;
-        message.textContent = '✅ 選択が確定されました。変更はできません。';
+        message.innerHTML = '✅ 選択が確定されました。<br>下のボタンから写真をダウンロードできます。';
         controls.parentNode.insertBefore(message, controls);
     }
 }
