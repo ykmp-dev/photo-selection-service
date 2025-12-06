@@ -2,6 +2,18 @@
 
 フォトスタジオ向けの写真選択Webサービスです。撮影した写真をお客様と共有し、お気に入りの写真を選んでもらうことができます。
 
+## 🚀 クイックスタート
+
+### 必須: データベースセットアップ
+
+このアプリケーションを使用する前に、**必ず**データベーススキーマを作成してください：
+
+1. **`supabase-schema-updates.sql`** のファイルを開く
+2. 内容を全てコピー
+3. Supabase SQL Editorに貼り付けて実行
+
+詳細は **[SETUP.md](./SETUP.md)** を参照してください。
+
 ## 特徴
 
 - 🎨 シンプルで使いやすいUI
@@ -147,8 +159,38 @@ MIT
 
 ### セットアップ手順
 
-1. Supabaseプロジェクトを作成（[セットアップガイド](./docs/supabase-setup.md)参照）
-2. `js/supabase-config.js` に認証情報を設定
-3. GitHub Pagesにデプロイ、またはローカルサーバーで起動
+#### 1. データベースのセットアップ（必須）
+
+**重要: 最初にデータベーススキーマを作成してください**
+
+1. Supabaseダッシュボードにログイン
+2. **SQL Editor** を開く
+3. **`supabase-schema-updates.sql` の内容を全てコピー**
+4. SQL Editorに貼り付けて **Run** をクリック
+
+```bash
+# SQLファイルの内容を確認
+cat supabase-schema-updates.sql
+```
+
+成功すると「✅ データベーススキーマ作成完了！」のメッセージが表示されます。
+
+詳細は **[SETUP.md](./SETUP.md)** を参照してください。
+
+#### 2. Supabase接続設定
+
+1. Supabaseダッシュボードの **Settings** → **API** を開く
+2. Project URLとanon public keyをコピー
+3. `js/supabase-config.js` に設定を記入
+
+#### 3. Storageバケットの作成
+
+1. Supabaseの **Storage** セクションを開く
+2. バケット名 `gallery-photos` を作成
+3. **Public bucket** に設定
+
+#### 4. デプロイ
+
+- GitHub Pagesにプッシュ、またはローカルサーバーで起動
 
 カスタマイズやバグ報告は、リポジトリのIssuesまでお願いします。
