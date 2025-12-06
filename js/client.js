@@ -93,6 +93,13 @@ async function initializeClient() {
         currentGallery = gallery;
         console.log('currentGallery設定完了');
 
+        // 全カット納品モードの場合は選択画面をスキップしてギャラリーページへ
+        if (gallery.all_photos_delivery) {
+            console.log('全カット納品モード - ギャラリーページにリダイレクト');
+            window.location.href = `selected-gallery.html?gallery=${galleryId}`;
+            return;
+        }
+
         // パスワード確認
         if (gallery.password_hash) {
             console.log('パスワード認証が必要');

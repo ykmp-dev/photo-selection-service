@@ -21,6 +21,21 @@ function initializeStudio() {
         document.getElementById('galleryPassword').value = password;
     });
 
+    // 全カット納品モードのトグル
+    const allPhotosDeliveryCheckbox = document.getElementById('allPhotosDelivery');
+    const maxSelectionsGroup = document.getElementById('maxSelectionsGroup');
+    const maxSelectionsInput = document.getElementById('maxSelections');
+
+    allPhotosDeliveryCheckbox.addEventListener('change', () => {
+        if (allPhotosDeliveryCheckbox.checked) {
+            maxSelectionsGroup.style.opacity = '0.5';
+            maxSelectionsInput.disabled = true;
+        } else {
+            maxSelectionsGroup.style.opacity = '1';
+            maxSelectionsInput.disabled = false;
+        }
+    });
+
     // ドラッグ&ドロップイベント
     uploadArea.addEventListener('dragover', (e) => {
         e.preventDefault();
@@ -144,14 +159,15 @@ document.addEventListener('DOMContentLoaded', () => {
 async function createGallery() {
     const galleryName = document.getElementById('galleryName').value.trim();
     const galleryPassword = document.getElementById('galleryPassword').value.trim();
-    const maxSelections = parseInt(document.getElementById('maxSelections').value) || 30;
+    const allPhotosDelivery = document.getElementById('allPhotosDelivery').checked;
+    const maxSelections = allPhotosDelivery ? null : (parseInt(document.getElementById('maxSelections').value) || 30);
 
     if (!galleryName) {
         alert('ギャラリー名を入力してください');
         return;
     }
 
-    if (maxSelections < 1 || maxSelections > 100) {
+    if (!allPhotosDelivery && (maxSelections < 1 || maxSelections > 100)) {
         alert('選択可能枚数は1〜100枚の範囲で指定してください');
         return;
     }
@@ -166,7 +182,8 @@ async function createGallery() {
         const gallery = await supabaseStorage.createGallery({
             name: galleryName,
             password: galleryPassword || null,
-            maxSelections: maxSelections
+            maxSelections: maxSelections,
+            allPhotosDelivery: allPhotosDelivery
         });
 
         currentGallery = gallery;

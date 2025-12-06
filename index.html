@@ -32,6 +32,14 @@
                 </div>
 
                 <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="allPhotosDelivery" style="width: auto; cursor: pointer;">
+                        <span>全カット納品モード</span>
+                    </label>
+                    <small style="color: #666; display: block; margin-top: 5px;">ONにすると、お客様は全写真をダウンロードできます（枚数選択なし）</small>
+                </div>
+
+                <div class="form-group" id="maxSelectionsGroup">
                     <label for="maxSelections">選択可能枚数</label>
                     <input type="number" id="maxSelections" placeholder="30" value="30" min="1" max="100" required>
                     <small style="color: #666; display: block; margin-top: 5px;">お客様が選択できる写真の枚数を指定してください（1-100枚）</small>

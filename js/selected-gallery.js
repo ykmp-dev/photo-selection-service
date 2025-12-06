@@ -27,15 +27,24 @@ async function initializeSelectedGallery() {
         currentGallery = gallery;
         document.getElementById('galleryTitle').textContent = gallery.name;
 
-        // 選択済み写真を取得
-        const allPhotos = await supabaseStorage.getGalleryPhotos(galleryId);
-        const selectedIds = await supabaseStorage.getSelections(galleryId);
-        selectedPhotos = allPhotos.filter(p => selectedIds.includes(p.id));
+        // 全カット納品モードか通常モードかで取得方法を変更
+        if (gallery.all_photos_delivery) {
+            // 全カット納品モード: 全写真を取得
+            selectedPhotos = await supabaseStorage.getGalleryPhotos(galleryId);
+        } else {
+            // 通常モード: 選択済み写真のみ
+            const allPhotos = await supabaseStorage.getGalleryPhotos(galleryId);
+            const selectedIds = await supabaseStorage.getSelections(galleryId);
+            selectedPhotos = allPhotos.filter(p => selectedIds.includes(p.id));
+        }
 
         document.getElementById('photoCount').textContent = selectedPhotos.length;
 
         if (selectedPhotos.length === 0) {
-            document.getElementById('mainContent').innerHTML = '<div style="text-align: center; padding: 50px;"><h2>まだ写真が選択されていません</h2></div>';
+            const emptyMessage = gallery.all_photos_delivery
+                ? '<div style="text-align: center; padding: 50px;"><h2>まだ写真がアップロードされていません</h2></div>'
+                : '<div style="text-align: center; padding: 50px;"><h2>まだ写真が選択されていません</h2></div>';
+            document.getElementById('mainContent').innerHTML = emptyMessage;
             return;
         }
 
