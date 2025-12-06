@@ -52,6 +52,13 @@ async function initializeSelectedGallery() {
         setupLightbox();
         setupDownloadAll();
 
+        // 全カット納品モードの場合、10秒後にアップセルポップアップを表示
+        if (gallery.all_photos_delivery) {
+            setTimeout(() => {
+                showUpsellPopup();
+            }, 10000);
+        }
+
     } catch (error) {
         console.error('初期化エラー:', error);
         document.body.innerHTML = '<div style="text-align: center; padding: 50px;"><h1>エラー</h1><p>ギャラリーの読み込みに失敗しました。</p></div>';
@@ -333,4 +340,164 @@ function showToast(message, duration = 2000) {
             document.body.removeChild(toast);
         }
     }, duration);
+}
+
+// アップセルポップアップを表示
+function showUpsellPopup() {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10003;
+        padding: 20px;
+        animation: fadeIn 0.3s ease-in;
+    `;
+
+    modal.innerHTML = `
+        <div style="
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+            animation: slideUp 0.4s ease-out;
+        ">
+            <button id="closeUpsellModal" style="
+                position: absolute;
+                top: 15px;
+                right: 15px;
+                background: transparent;
+                border: none;
+                font-size: 28px;
+                cursor: pointer;
+                color: var(--notion-text-secondary);
+                line-height: 1;
+                padding: 5px;
+            ">×</button>
+
+            <h2 style="
+                margin: 0 0 10px 0;
+                font-size: 28px;
+                color: var(--notion-text);
+                text-align: center;
+            ">🎁 特別なご提案</h2>
+
+            <p style="
+                text-align: center;
+                color: var(--notion-text-secondary);
+                font-size: 16px;
+                margin-bottom: 30px;
+            ">素敵な思い出を形に残しませんか？</p>
+
+            <div style="display: grid; gap: 15px;">
+                <div class="upsell-option" style="
+                    border: 2px solid var(--notion-border);
+                    border-radius: 12px;
+                    padding: 20px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    background: var(--notion-bg);
+                " onmouseover="this.style.borderColor='var(--notion-blue)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--notion-border)'; this.style.transform='translateY(0)'">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="font-size: 40px;">📖</div>
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--notion-text);">フォトブック</h3>
+                            <p style="margin: 0; color: var(--notion-text-secondary); font-size: 14px;">高品質な写真集を作成して、大切な思い出を永遠に</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="upsell-option" style="
+                    border: 2px solid var(--notion-border);
+                    border-radius: 12px;
+                    padding: 20px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    background: var(--notion-bg);
+                " onmouseover="this.style.borderColor='var(--notion-blue)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--notion-border)'; this.style.transform='translateY(0)'">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="font-size: 40px;">👑</div>
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--notion-text);">プレミアムアルバム</h3>
+                            <p style="margin: 0; color: var(--notion-text-secondary); font-size: 14px;">最高級の素材で作る特別なアルバム</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="upsell-option" style="
+                    border: 2px solid var(--notion-border);
+                    border-radius: 12px;
+                    padding: 20px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    background: var(--notion-bg);
+                " onmouseover="this.style.borderColor='var(--notion-blue)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--notion-border)'; this.style.transform='translateY(0)'">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="font-size: 40px;">🖼️</div>
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--notion-text);">写真プリント</h3>
+                            <p style="margin: 0; color: var(--notion-text-secondary); font-size: 14px;">お気に入りの写真を高品質プリントで</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <p style="
+                text-align: center;
+                margin-top: 25px;
+                margin-bottom: 0;
+                color: var(--notion-text-secondary);
+                font-size: 13px;
+            ">※ご注文は別途お問い合わせください</p>
+        </div>
+
+        <style>
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes slideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(30px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        </style>
+    `;
+
+    document.body.appendChild(modal);
+
+    // 閉じるボタン
+    document.getElementById('closeUpsellModal').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+
+    // 背景クリックで閉じる
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
+
+    // オプションクリック時（お問い合わせへ）
+    const options = modal.querySelectorAll('.upsell-option');
+    options.forEach((option, index) => {
+        option.addEventListener('click', () => {
+            const products = ['フォトブック', 'プレミアムアルバム', '写真プリント'];
+            alert(`${products[index]}のご注文を承ります。\n\nスタジオまでお問い合わせください。`);
+        });
+    });
 }
