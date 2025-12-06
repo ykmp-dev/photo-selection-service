@@ -298,8 +298,12 @@ function setupDownloadAll() {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            // ダウンロード履歴を記録
-            await supabaseStorage.recordDownload(currentGallery.id);
+            // ダウンロード履歴を記録（エラーが出てもダウンロードは成功）
+            try {
+                await supabaseStorage.recordDownload(currentGallery.id);
+            } catch (recordError) {
+                console.warn('ダウンロード履歴の記録に失敗しましたが、ダウンロードは完了しています:', recordError);
+            }
 
             showToast('✅ ZIPダウンロード完了！');
 
