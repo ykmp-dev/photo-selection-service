@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-http",
+        "https://mcp.supabase.com/mcp?project_ref=wrgmbkkhgmxholzlgiic&features=database"
+      ]
+    }
+  }
+}
