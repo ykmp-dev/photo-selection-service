@@ -4,17 +4,23 @@
 
 ### データベーススキーマの作成
 
+**オールインワンスクリプト（推奨）:**
+
 1. **Supabaseダッシュボード** にログイン
 2. 左メニューから **SQL Editor** を選択
-3. 下記のSQLファイルの内容を全てコピー
+3. **`supabase-reset-and-setup.sql`** の内容を全てコピー
 4. SQL Editorに貼り付けて **Run** をクリック
-
-**SQLファイル:** `supabase-schema-updates.sql`
 
 ```bash
 # ファイルの内容を確認
-cat supabase-schema-updates.sql
+cat supabase-reset-and-setup.sql
 ```
+
+このスクリプト1つで以下を実行：
+- ✅ 既存テーブルの削除（クリーンアップ）
+- ✅ 全テーブルの新規作成
+- ✅ RLSポリシーの設定
+- ✅ ヘルパー関数の作成
 
 ### 作成されるデータベース構造
 
