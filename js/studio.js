@@ -1,6 +1,7 @@
-// スタジオ管理画面のロジック（Supabase対応版）
+// スタジオ管理画面のロジック（Supabase対応版 - カテゴリ対応）
 let selectedFiles = [];
 let isUploading = false;
+let currentGallery = null; // 作成中のギャラリー
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeStudio();
@@ -9,7 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function initializeStudio() {
     const uploadArea = document.getElementById('uploadArea');
     const fileInput = document.getElementById('fileInput');
-    const createGalleryBtn = document.getElementById('createGallery');
+    const createGalleryBtn = document.getElementById('createGalleryBtn');
+    const addPhotosBtn = document.getElementById('addPhotosBtn');
+    const finalizeGalleryBtn = document.getElementById('finalizeGalleryBtn');
     const generatePasswordBtn = document.getElementById('generatePassword');
 
     // パスワード自動生成
@@ -54,8 +57,19 @@ function initializeStudio() {
         handleFiles(e.target.files);
     });
 
-    // ギャラリー作成
+    // ギャラリー名入力監視
+    const galleryNameInput = document.getElementById('galleryName');
+    if (galleryNameInput) {
+        galleryNameInput.addEventListener('input', () => {
+            const galleryName = galleryNameInput.value.trim();
+            createGalleryBtn.disabled = !galleryName;
+        });
+    }
+
+    // イベントリスナー
     createGalleryBtn.addEventListener('click', createGallery);
+    addPhotosBtn.addEventListener('click', addPhotosToGallery);
+    finalizeGalleryBtn.addEventListener('click', finalizeGallery);
 
     // 既存ギャラリーの読み込み
     loadGalleries();
@@ -78,7 +92,7 @@ function handleFiles(files) {
 
     console.log('合計選択:', selectedFiles.length, '個');
     updatePreview();
-    updateCreateButton();
+    updateAddButton();
 }
 
 function updatePreview() {
@@ -103,7 +117,7 @@ function updatePreview() {
         removeBtn.onclick = () => {
             selectedFiles.splice(index, 1);
             updatePreview();
-            updateCreateButton();
+            updateAddButton();
         };
 
         item.appendChild(img);
@@ -112,29 +126,28 @@ function updatePreview() {
     });
 }
 
-function updateCreateButton() {
-    const createBtn = document.getElementById('createGallery');
-    const galleryName = document.getElementById('galleryName').value.trim();
-
-    createBtn.disabled = !(galleryName && selectedFiles.length > 0) || isUploading;
+function updateAddButton() {
+    const addBtn = document.getElementById('addPhotosBtn');
+    const category = document.getElementById('photoCategory').value.trim();
+    addBtn.disabled = !(selectedFiles.length > 0 && category) || isUploading;
 }
 
-// ギャラリー名の入力監視
+// カテゴリ入力監視
 document.addEventListener('DOMContentLoaded', () => {
-    const galleryNameInput = document.getElementById('galleryName');
-    if (galleryNameInput) {
-        galleryNameInput.addEventListener('input', updateCreateButton);
+    const categoryInput = document.getElementById('photoCategory');
+    if (categoryInput) {
+        categoryInput.addEventListener('input', updateAddButton);
     }
 });
 
+// ステップ1: ギャラリー基本情報のみ作成
 async function createGallery() {
     const galleryName = document.getElementById('galleryName').value.trim();
     const galleryPassword = document.getElementById('galleryPassword').value.trim();
     const maxSelections = parseInt(document.getElementById('maxSelections').value) || 30;
-    const photoCategory = document.getElementById('photoCategory').value.trim();
 
-    if (!galleryName || selectedFiles.length === 0) {
-        alert('ギャラリー名と写真を入力してください');
+    if (!galleryName) {
+        alert('ギャラリー名を入力してください');
         return;
     }
 
@@ -143,29 +156,67 @@ async function createGallery() {
         return;
     }
 
-    if (isUploading) {
-        return;
-    }
-
-    isUploading = true;
-    const createBtn = document.getElementById('createGallery');
+    const createBtn = document.getElementById('createGalleryBtn');
     const originalText = createBtn.textContent;
     createBtn.disabled = true;
+    createBtn.textContent = 'ギャラリー作成中...';
 
     try {
-        // ギャラリーを作成
-        createBtn.textContent = 'ギャラリー作成中...';
+        // ギャラリーを作成（写真はまだ追加しない）
         const gallery = await supabaseStorage.createGallery({
             name: galleryName,
             password: galleryPassword || null,
             maxSelections: maxSelections
         });
 
-        // 写真を1枚ずつアップロード
+        currentGallery = gallery;
+
+        // ステップ1を非表示、ステップ2を表示
+        document.getElementById('createSection').style.display = 'none';
+        document.getElementById('uploadSection').style.display = 'block';
+
+        // 現在のギャラリー情報を表示
+        updateCurrentGalleryInfo();
+
+        alert(`✅ ギャラリー「${galleryName}」を作成しました！\n次に写真をカテゴリ毎に追加してください。`);
+
+    } catch (error) {
+        console.error('ギャラリー作成エラー:', error);
+        alert('ギャラリーの作成中にエラーが発生しました。\nもう一度お試しください。');
+    } finally {
+        createBtn.disabled = false;
+        createBtn.textContent = originalText;
+    }
+}
+
+// ステップ2: カテゴリ付きで写真を追加
+async function addPhotosToGallery() {
+    if (!currentGallery) {
+        alert('先にギャラリーを作成してください');
+        return;
+    }
+
+    const category = document.getElementById('photoCategory').value.trim();
+
+    if (!category || selectedFiles.length === 0) {
+        alert('カテゴリ名と写真を入力してください');
+        return;
+    }
+
+    if (isUploading) {
+        return;
+    }
+
+    isUploading = true;
+    const addBtn = document.getElementById('addPhotosBtn');
+    const originalText = addBtn.textContent;
+    addBtn.disabled = true;
+
+    try {
         const totalFiles = selectedFiles.length;
         for (let i = 0; i < totalFiles; i++) {
             const file = selectedFiles[i];
-            createBtn.textContent = `アップロード中... (${i + 1}/${totalFiles})`;
+            addBtn.textContent = `アップロード中... (${i + 1}/${totalFiles})`;
 
             // EXIFメタデータからレーティングを抽出
             let rating = 0;
@@ -190,36 +241,103 @@ async function createGallery() {
             // 画像を圧縮
             const compressedFile = await supabaseStorage.compressImage(file);
 
-            // Supabaseにアップロード（メタデータ付き）
-            await supabaseStorage.uploadPhoto(gallery.id, compressedFile, {
+            // Supabaseにアップロード（カテゴリ付き）
+            await supabaseStorage.uploadPhoto(currentGallery.id, compressedFile, {
                 rating: rating,
-                category: photoCategory || null
+                category: category
             });
         }
 
-        // フォームをリセット
-        document.getElementById('galleryName').value = '';
-        document.getElementById('galleryPassword').value = '';
-        document.getElementById('maxSelections').value = '30';
-        document.getElementById('photoCategory').value = '';
-        document.getElementById('fileInput').value = '';
+        // プレビューをクリア
         selectedFiles = [];
+        document.getElementById('fileInput').value = '';
+        document.getElementById('photoCategory').value = '';
         updatePreview();
-        updateCreateButton();
+        updateAddButton();
+
+        // ギャラリー情報を更新
+        await updateCurrentGalleryInfo();
+
+        alert(`✅ ${totalFiles}枚の写真を「${category}」カテゴリで追加しました！\n\n続けて別のカテゴリの写真を追加するか、「完了してURLを取得」ボタンを押してください。`);
+
+    } catch (error) {
+        console.error('写真追加エラー:', error);
+        alert('写真の追加中にエラーが発生しました。\nもう一度お試しください。');
+    } finally {
+        isUploading = false;
+        addBtn.textContent = originalText;
+        updateAddButton();
+    }
+}
+
+// 現在のギャラリー情報を更新表示
+async function updateCurrentGalleryInfo() {
+    if (!currentGallery) return;
+
+    try {
+        // 写真一覧を取得してカテゴリ毎に集計
+        const photos = await supabaseStorage.getGalleryPhotos(currentGallery.id);
+        const categoryCount = {};
+        photos.forEach(photo => {
+            const cat = photo.category || '未分類';
+            categoryCount[cat] = (categoryCount[cat] || 0) + 1;
+        });
+
+        const categoryListHTML = Object.entries(categoryCount)
+            .map(([cat, count]) => `<li>${cat}: ${count}枚</li>`)
+            .join('');
+
+        const infoDiv = document.getElementById('currentGalleryInfo');
+        infoDiv.innerHTML = `
+            <p style="margin: 0 0 10px 0;"><strong>名前:</strong> ${currentGallery.name}</p>
+            <p style="margin: 0 0 10px 0;"><strong>選択可能枚数:</strong> ${currentGallery.max_selections || 30}枚</p>
+            <p style="margin: 0 0 5px 0;"><strong>追加済み写真:</strong> ${photos.length}枚</p>
+            ${categoryListHTML ? `<ul style="margin: 5px 0 0 20px; padding: 0;">${categoryListHTML}</ul>` : ''}
+        `;
+    } catch (error) {
+        console.error('ギャラリー情報取得エラー:', error);
+    }
+}
+
+// ステップ3: 確定してURLを取得
+async function finalizeGallery() {
+    if (!currentGallery) {
+        alert('先にギャラリーを作成してください');
+        return;
+    }
+
+    // 写真が追加されているか確認
+    try {
+        const photos = await supabaseStorage.getGalleryPhotos(currentGallery.id);
+        if (photos.length === 0) {
+            if (!confirm('まだ写真が1枚も追加されていません。\nこのまま確定しますか？')) {
+                return;
+            }
+        }
+
+        // メール文面を表示
+        showEmailTemplate(
+            currentGallery.id,
+            currentGallery.name,
+            currentGallery.plainPassword || '',
+            photos.length,
+            currentGallery.max_selections || 30
+        );
 
         // ギャラリーリストを更新
         await loadGalleries();
 
-        // メール文面を表示（平文パスワードを使用）
-        showEmailTemplate(gallery.id, galleryName, gallery.plainPassword || galleryPassword, totalFiles, maxSelections);
+        // フォームをリセット
+        document.getElementById('createSection').style.display = 'block';
+        document.getElementById('uploadSection').style.display = 'none';
+        document.getElementById('galleryName').value = '';
+        document.getElementById('galleryPassword').value = '';
+        document.getElementById('maxSelections').value = '30';
+        currentGallery = null;
 
     } catch (error) {
-        console.error('ギャラリー作成エラー:', error);
-        alert('ギャラリーの作成中にエラーが発生しました。\nもう一度お試しください。');
-    } finally {
-        isUploading = false;
-        createBtn.textContent = originalText;
-        updateCreateButton();
+        console.error('確定エラー:', error);
+        alert('確定処理中にエラーが発生しました。');
     }
 }
 
@@ -274,209 +392,76 @@ async function loadGalleries() {
         }
     } catch (error) {
         console.error('ギャラリー一覧取得エラー:', error);
-        const galleryList = document.getElementById('galleryList');
-        galleryList.innerHTML = '<p class="empty-message">ギャラリーの読み込みに失敗しました</p>';
     }
 }
 
 function viewGallery(galleryId) {
     const url = `${window.location.origin}${window.location.pathname.replace('index.html', '')}client.html?gallery=${galleryId}`;
-
     navigator.clipboard.writeText(url).then(() => {
-        alert('お客様用URLをコピーしました！\n\n' + url);
-    }).catch(() => {
-        prompt('お客様用URLをコピーしてください:', url);
+        alert('✅ お客様用URLをクリップボードにコピーしました！\n\n' + url);
+    }).catch(err => {
+        alert('URL: ' + url);
     });
 }
 
 async function viewResults(galleryId) {
     try {
-        const gallery = await supabaseStorage.getGallery(galleryId);
-        const photos = await supabaseStorage.getGalleryPhotos(galleryId);
         const selectedPhotoIds = await supabaseStorage.getSelections(galleryId);
+        const photos = await supabaseStorage.getGalleryPhotos(galleryId);
+        const selectedPhotos = photos.filter(p => selectedPhotoIds.includes(p.id));
 
-        console.log('結果確認:', { gallery, photos: photos.length, selectedPhotoIds });
-
-        if (!gallery) {
-            alert('ギャラリーが見つかりません');
+        if (selectedPhotoIds.length === 0) {
+            alert('まだ写真が選択されていません');
             return;
         }
 
-        const selectedPhotos = photos.filter(p => selectedPhotoIds.includes(p.id));
-        const message = `${gallery.name}\n\n全${photos.length}枚中、${selectedPhotos.length}枚が選択されています。`;
-
-        if (selectedPhotos.length > 0) {
-            if (confirm(message + '\n\n選択された写真を新しいタブで表示しますか？')) {
-                showSelectedPhotos(selectedPhotos, gallery.name);
-            }
-        } else {
-            alert(message);
-        }
+        alert(`選択された写真: ${selectedPhotoIds.length}枚\n\nファイル名:\n${selectedPhotos.map(p => p.file_name).join('\n')}`);
     } catch (error) {
-        console.error('結果確認エラー詳細:', error);
-        alert('結果の確認中にエラーが発生しました\n\nエラー: ' + (error.message || error));
+        console.error('結果確認エラー:', error);
+        alert('結果の取得に失敗しました');
     }
-}
-
-function showSelectedPhotos(photos, galleryName) {
-    const newWindow = window.open('', '_blank');
-    newWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>${galleryName} - 選択された写真</title>
-            <style>
-                body { font-family: sans-serif; padding: 20px; background: #f5f5f5; margin: 0; }
-                h1 { text-align: center; color: #333; }
-                .grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                    gap: 20px;
-                    max-width: 1200px;
-                    margin: 0 auto;
-                }
-                .photo {
-                    background: white;
-                    padding: 10px;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                }
-                img { width: 100%; border-radius: 4px; display: block; }
-                .filename {
-                    margin-top: 8px;
-                    font-size: 0.9em;
-                    color: #666;
-                    text-align: center;
-                    word-break: break-all;
-                }
-            </style>
-        </head>
-        <body>
-            <h1>${galleryName} - 選択された写真 (${photos.length}枚)</h1>
-            <div class="grid">
-                ${photos.map((p, i) => `
-                    <div class="photo">
-                        <img src="${p.url}" alt="${p.file_name}" loading="lazy">
-                        <div class="filename">${p.file_name}</div>
-                    </div>
-                `).join('')}
-            </div>
-        </body>
-        </html>
-    `);
 }
 
 async function deleteGallery(galleryId) {
-    if (!confirm('このギャラリーを削除してもよろしいですか？\n\n※ 写真とすべての選択情報も削除されます。')) {
+    if (!confirm('本当にこのギャラリーを削除しますか？\n写真データも全て削除されます。')) {
         return;
     }
 
-    // 削除中のモーダルを表示
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.8);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-    `;
-
-    const content = document.createElement('div');
-    content.style.cssText = `
-        background: white;
-        padding: 40px;
-        border-radius: 12px;
-        text-align: center;
-        min-width: 300px;
-    `;
-
-    content.innerHTML = `
-        <div style="font-size: 48px; margin-bottom: 20px;">🗑️</div>
-        <div style="font-size: 18px; font-weight: 600; margin-bottom: 10px; color: #333;">削除中...</div>
-        <div id="deleteStatus" style="color: #666; font-size: 14px;">準備中</div>
-    `;
-
-    modal.appendChild(content);
-    document.body.appendChild(modal);
-
     try {
-        console.log('ギャラリー削除開始:', galleryId);
-
-        document.getElementById('deleteStatus').textContent = '写真を削除中...';
         await supabaseStorage.deleteGallery(galleryId);
-
-        console.log('ギャラリー削除完了');
-
-        // 成功モーダルに切り替え
-        content.innerHTML = `
-            <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
-            <div style="font-size: 20px; font-weight: 600; margin-bottom: 10px; color: #333;">削除完了</div>
-            <div style="color: #666; font-size: 14px; margin-bottom: 20px;">ギャラリーを削除しました</div>
-        `;
-
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        document.body.removeChild(modal);
-
         await loadGalleries();
+        alert('✅ ギャラリーを削除しました');
     } catch (error) {
-        console.error('ギャラリー削除エラー詳細:', error);
-
-        // エラーモーダルに切り替え
-        content.innerHTML = `
-            <div style="font-size: 64px; margin-bottom: 20px;">❌</div>
-            <div style="font-size: 20px; font-weight: 600; margin-bottom: 10px; color: #e53e3e;">削除失敗</div>
-            <div style="color: #666; font-size: 14px; margin-bottom: 20px;">${error.message || 'エラーが発生しました'}</div>
-            <button onclick="this.closest('[style*=fixed]').remove()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">閉じる</button>
-        `;
+        console.error('削除エラー:', error);
+        alert('削除に失敗しました');
     }
 }
 
-// パスワード生成関数（8文字、覚えやすい英数字）
-function generateRandomPassword() {
-    const chars = 'abcdefghijkmnopqrstuvwxyz23456789'; // 紛らわしい文字を除外 (l, 1, 0, o)
-    const length = 8;
-    let password = '';
-    for (let i = 0; i < length; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return password;
-}
-
-// メール文面テンプレートを表示
-function showEmailTemplate(galleryId, galleryName, password, photoCount, maxSelections = 30) {
+function showEmailTemplate(galleryId, galleryName, password, photoCount, maxSelections) {
     const url = `${window.location.origin}${window.location.pathname.replace('index.html', '')}client.html?gallery=${galleryId}`;
 
-    const passwordText = password ? `パスワード: ${password}\n` : '';
-    const emailBody = `${galleryName}様
+    const passwordText = password ? `パスワード: ${password}` : 'パスワード: なし';
 
-いつもご利用いただきありがとうございます。
-撮影写真をアップロードいたしました。
+    const emailBody = `
+${galleryName} 様
 
-以下のURLより写真をご確認いただき、お気に入りの写真を${maxSelections}枚お選びください。
+お撮影いただきました写真をご確認いただけるようになりました。
+下記URLより、お気に入りの写真を${maxSelections}枚お選びください。
 
-【写真選択ページ】
+【写真選択URL】
 ${url}
 
 ${passwordText}
-【写真枚数】
-${photoCount}枚
 
-【選択可能枚数】
-${maxSelections}枚
+写真枚数: ${photoCount}枚
+選択可能枚数: ${maxSelections}枚
 
-【選択期限】
-ご都合の良い時にお選びください
+※選択期限: 〇〇日まで
 
-ご不明な点がございましたら、お気軽にお問い合わせください。
+ご不明点がございましたら、お気軽にお問い合わせください。
+    `.trim();
 
-よろしくお願いいたします。`;
-
-    // モーダルを表示
+    // モーダル表示
     const modal = document.createElement('div');
     modal.style.cssText = `
         position: fixed;
@@ -484,7 +469,7 @@ ${maxSelections}枚
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0,0,0,0.7);
+        background: rgba(0,0,0,0.8);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -497,42 +482,35 @@ ${maxSelections}枚
         background: white;
         border-radius: 12px;
         padding: 30px;
-        max-width: 600px;
+        max-width: 700px;
         width: 100%;
-        max-height: 80vh;
-        overflow-y: auto;
     `;
 
     content.innerHTML = `
-        <h2 style="margin-top: 0; color: #333;">✅ ギャラリー作成完了</h2>
-        <p style="color: #666;">お客様への送信用メール文面です。必要に応じて編集してお使いください。</p>
-        <textarea id="emailTemplate" style="width: 100%; min-height: 300px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: sans-serif; font-size: 14px; line-height: 1.6; resize: vertical;">${emailBody}</textarea>
-        <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-            <button id="copyEmailBtn" class="btn btn-primary" style="flex: 1; min-width: 150px;">📋 メール文面をコピー</button>
-            <button id="copyUrlBtn" class="btn" style="flex: 1; min-width: 150px;">🔗 URLのみコピー</button>
-            <button id="closeModalBtn" class="btn" style="background: #e53e3e; color: white;">閉じる</button>
+        <h2 style="margin-top: 0;">📧 お客様へ送信するメール文面</h2>
+        <textarea id="emailTemplateText" style="width: 100%; height: 400px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 14px; line-height: 1.6;">${emailBody}</textarea>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button id="copyEmailBtn" class="btn btn-primary" style="flex: 1;">
+                📋 コピー
+            </button>
+            <button id="closeEmailBtn" class="btn" style="flex: 1;">
+                閉じる
+            </button>
         </div>
     `;
 
     modal.appendChild(content);
     document.body.appendChild(modal);
 
-    // イベントリスナー
     document.getElementById('copyEmailBtn').addEventListener('click', () => {
-        const textarea = document.getElementById('emailTemplate');
+        const textarea = document.getElementById('emailTemplateText');
         textarea.select();
         navigator.clipboard.writeText(textarea.value).then(() => {
-            alert('メール文面をコピーしました！');
+            alert('✅ メール文面をコピーしました！');
         });
     });
 
-    document.getElementById('copyUrlBtn').addEventListener('click', () => {
-        navigator.clipboard.writeText(url).then(() => {
-            alert('URLをコピーしました！');
-        });
-    });
-
-    document.getElementById('closeModalBtn').addEventListener('click', () => {
+    document.getElementById('closeEmailBtn').addEventListener('click', () => {
         document.body.removeChild(modal);
     });
 
@@ -541,4 +519,13 @@ ${maxSelections}枚
             document.body.removeChild(modal);
         }
     });
+}
+
+function generateRandomPassword() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let password = '';
+    for (let i = 0; i < 8; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
 }
