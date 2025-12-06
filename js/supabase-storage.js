@@ -165,8 +165,7 @@ class SupabasePhotoStorage {
                 .insert([{
                     gallery_id: galleryId,
                     file_name: file.name,
-                    storage_path: fileName,
-                    thumbnail_url: publicUrl,
+                    file_path: fileName,
                     file_size: file.size
                 }])
                 .select()
@@ -198,7 +197,7 @@ class SupabasePhotoStorage {
             // 各写真の公開URLを付与
             return data.map(photo => ({
                 ...photo,
-                url: this.supabase.storage.from(this.bucket).getPublicUrl(photo.storage_path).data.publicUrl
+                url: this.supabase.storage.from(this.bucket).getPublicUrl(photo.file_path).data.publicUrl
             }));
         } catch (error) {
             console.error('写真取得エラー:', error);
@@ -347,13 +346,13 @@ class SupabasePhotoStorage {
             if (photos.length > 0) {
                 console.log('Storageから写真を削除中...');
                 for (const photo of photos) {
-                    console.log(`削除中: ${photo.storage_path}`);
+                    console.log(`削除中: ${photo.file_path}`);
                     const { data: removeData, error: removeError } = await this.supabase.storage
                         .from(this.bucket)
-                        .remove([photo.storage_path]);
+                        .remove([photo.file_path]);
 
                     if (removeError) {
-                        console.error(`Storage削除エラー (${photo.storage_path}):`, removeError);
+                        console.error(`Storage削除エラー (${photo.file_path}):`, removeError);
                     } else {
                         console.log(`Storage削除成功:`, removeData);
                     }
