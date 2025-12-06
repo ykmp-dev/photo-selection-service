@@ -304,9 +304,13 @@ async function updateCurrentGalleryInfo() {
         });
 
         const infoDiv = document.getElementById('currentGalleryInfo');
+        const deliveryModeText = currentGallery.all_photos_delivery
+            ? '<p style="margin: 0 0 10px 0;"><strong>配信モード:</strong> 🎁 全カット納品</p>'
+            : `<p style="margin: 0 0 10px 0;"><strong>選択可能枚数:</strong> ${currentGallery.max_selections || 30}枚</p>`;
+
         infoDiv.innerHTML = `
             <p style="margin: 0 0 10px 0;"><strong>名前:</strong> ${currentGallery.name}</p>
-            <p style="margin: 0 0 10px 0;"><strong>選択可能枚数:</strong> ${currentGallery.max_selections || 30}枚</p>
+            ${deliveryModeText}
             <p style="margin: 0 0 15px 0;"><strong>追加済み写真:</strong> ${photos.length}枚</p>
             <div id="categoryAccordion"></div>
         `;
