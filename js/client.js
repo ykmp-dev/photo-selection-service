@@ -160,7 +160,7 @@ async function showGallery() {
 
         updatePhotoGrid();
         updateSelectionCount();
-        setupCategoryFilters();
+        // setupCategoryFilters(); // 一時的に無効化（設計変更のため）
 
         console.log('イベントリスナー設定');
         // イベントリスナー
