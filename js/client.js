@@ -3,6 +3,8 @@ let currentGallery = null;
 let currentPhotos = [];
 let selectedPhotoIds = new Set();
 let currentPhotoIndex = 0;
+let filterMode = 'all'; // 'all' or 'unselected'
+let categoryFilter = null; // null or category name
 
 // 汎用エラーモーダル表示関数
 function showErrorModal(title, message) {
@@ -158,10 +160,14 @@ async function showGallery() {
 
         updatePhotoGrid();
         updateSelectionCount();
+        setupCategoryFilters();
 
         console.log('イベントリスナー設定');
         // イベントリスナー
         document.getElementById('submitSelection').addEventListener('click', submitSelection);
+        document.getElementById('autoSelectBtn').addEventListener('click', autoSelectRemaining);
+        document.getElementById('filterUnselectedBtn').addEventListener('click', toggleUnselectedFilter);
+        document.getElementById('showSelectedBtn').addEventListener('click', showSelectedPhotosModal);
 
         // ライトボックスの設定
         setupLightbox();
@@ -183,7 +189,34 @@ function updatePhotoGrid() {
     const photoGrid = document.getElementById('photoGrid');
     photoGrid.innerHTML = '';
 
-    currentPhotos.forEach((photo, index) => {
+    // フィルターモードに応じて表示する写真を決定
+    let photosToDisplay = currentPhotos;
+
+    // 未選択フィルター
+    if (filterMode === 'unselected') {
+        photosToDisplay = photosToDisplay.filter(photo => !selectedPhotoIds.has(photo.id));
+    }
+
+    // カテゴリフィルター
+    if (categoryFilter) {
+        photosToDisplay = photosToDisplay.filter(photo => photo.category === categoryFilter);
+    }
+
+    if (photosToDisplay.length === 0) {
+        let message = '写真がありません';
+        if (filterMode === 'unselected') {
+            message = '未選択の写真はありません';
+        } else if (categoryFilter) {
+            message = `「${categoryFilter}」の写真はありません`;
+        }
+        photoGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--notion-text-secondary);">${message}</div>`;
+        return;
+    }
+
+    photosToDisplay.forEach((photo, displayIndex) => {
+        // 元のインデックスを保持
+        const originalIndex = currentPhotos.indexOf(photo);
+
         const item = document.createElement('div');
         item.className = 'photo-item' + (selectedPhotoIds.has(photo.id) ? ' selected' : '');
 
@@ -194,21 +227,44 @@ function updatePhotoGrid() {
 
         item.appendChild(img);
 
+        // レーティング ≥ 1 の場合、おすすめバッジを表示
+        if (photo.rating && photo.rating >= 1) {
+            const badge = document.createElement('div');
+            badge.className = 'recommended-badge';
+            badge.innerHTML = '⭐';
+            badge.title = `おすすめ (評価: ${photo.rating})`;
+            badge.style.cssText = `
+                position: absolute;
+                top: 8px;
+                left: 8px;
+                background: rgba(255, 215, 0, 0.95);
+                color: #333;
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 14px;
+                font-weight: bold;
+                z-index: 5;
+                pointer-events: none;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            `;
+            item.appendChild(badge);
+        }
+
         // クリックでトグル
         item.addEventListener('click', () => {
-            togglePhotoSelection(index);
+            togglePhotoSelection(originalIndex);
         });
 
         // 長押しまたはダブルクリックで拡大
         let touchTimer;
         item.addEventListener('touchstart', () => {
-            touchTimer = setTimeout(() => openLightbox(index), 500);
+            touchTimer = setTimeout(() => openLightbox(originalIndex), 500);
         });
         item.addEventListener('touchend', () => {
             clearTimeout(touchTimer);
         });
         item.addEventListener('dblclick', () => {
-            openLightbox(index);
+            openLightbox(originalIndex);
         });
 
         photoGrid.appendChild(item);
@@ -248,7 +304,327 @@ async function togglePhotoSelection(index) {
 
 function updateSelectionCount() {
     const count = selectedPhotoIds.size;
+    const maxSelections = currentGallery.max_selections || 30;
+    const percentage = Math.round((count / maxSelections) * 100);
+    const remaining = maxSelections - count;
+
+    // カウント更新
     document.getElementById('selectedCount').textContent = count;
+
+    // プログレスバー更新
+    const progressBar = document.getElementById('progressBar');
+    const progressPercentage = document.getElementById('progressPercentage');
+    const remainingMessage = document.getElementById('remainingMessage');
+    const autoSelectBtn = document.getElementById('autoSelectBtn');
+
+    if (progressBar) {
+        progressBar.style.width = percentage + '%';
+
+        // 進捗に応じて色を変更
+        if (percentage === 100) {
+            progressBar.style.background = 'var(--notion-green)';
+        } else if (percentage >= 80) {
+            progressBar.style.background = 'linear-gradient(90deg, var(--notion-blue), var(--notion-green))';
+        } else {
+            progressBar.style.background = 'var(--notion-blue)';
+        }
+    }
+
+    if (progressPercentage) {
+        progressPercentage.textContent = percentage + '%';
+    }
+
+    if (remainingMessage) {
+        if (remaining > 0) {
+            remainingMessage.textContent = `あと${remaining}枚選択してください`;
+            remainingMessage.style.color = 'var(--notion-text-secondary)';
+        } else if (remaining === 0) {
+            remainingMessage.textContent = '✅ 選択完了！確認ボタンを押してください';
+            remainingMessage.style.color = 'var(--notion-green)';
+        } else {
+            remainingMessage.textContent = `⚠️ ${Math.abs(remaining)}枚超過しています`;
+            remainingMessage.style.color = 'var(--notion-red)';
+        }
+    }
+
+    // 自動選択ボタンの表示制御
+    if (autoSelectBtn) {
+        if (remaining > 0 && remaining <= currentPhotos.length - count) {
+            autoSelectBtn.style.display = 'inline-block';
+        } else {
+            autoSelectBtn.style.display = 'none';
+        }
+    }
+}
+
+// 残りを自動選択
+async function autoSelectRemaining() {
+    const maxSelections = currentGallery.max_selections || 30;
+    const remaining = maxSelections - selectedPhotoIds.size;
+
+    if (remaining <= 0) {
+        return;
+    }
+
+    try {
+        // 未選択の写真を取得
+        const unselectedPhotos = currentPhotos.filter(p => !selectedPhotoIds.has(p.id));
+
+        // ランダムに選択（または先頭から）
+        const photosToSelect = unselectedPhotos.slice(0, remaining);
+
+        // バッチで選択を保存
+        for (const photo of photosToSelect) {
+            await supabaseStorage.saveSelection(currentGallery.id, photo.id);
+            selectedPhotoIds.add(photo.id);
+        }
+
+        updatePhotoGrid();
+        updateSelectionCount();
+
+        // 完了メッセージ
+        const message = document.createElement('div');
+        message.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--notion-green);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            z-index: 10000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        `;
+        message.textContent = `✅ ${photosToSelect.length}枚を自動選択しました！`;
+        document.body.appendChild(message);
+
+        setTimeout(() => {
+            document.body.removeChild(message);
+        }, 2000);
+    } catch (error) {
+        console.error('自動選択エラー:', error);
+        showErrorModal('自動選択エラー', '自動選択中にエラーが発生しました。');
+    }
+}
+
+// 未選択フィルター切り替え
+function toggleUnselectedFilter() {
+    const btn = document.getElementById('filterUnselectedBtn');
+
+    if (filterMode === 'all') {
+        filterMode = 'unselected';
+        btn.textContent = '全て表示';
+        btn.style.background = 'var(--notion-blue)';
+        btn.style.color = 'white';
+        btn.style.borderColor = 'var(--notion-blue)';
+    } else {
+        filterMode = 'all';
+        btn.textContent = '未選択のみ表示';
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+    }
+
+    updatePhotoGrid();
+}
+
+// カテゴリフィルターをセットアップ
+function setupCategoryFilters() {
+    // カテゴリを抽出
+    const categories = [...new Set(currentPhotos
+        .map(photo => photo.category)
+        .filter(cat => cat && cat.trim() !== ''))];
+
+    if (categories.length === 0) {
+        return; // カテゴリがない場合は何もしない
+    }
+
+    // カテゴリフィルターボタンを追加
+    const controlButtons = document.querySelector('.control-buttons');
+
+    // 既存のカテゴリボタンを削除
+    const existingCategoryBtns = document.querySelectorAll('.category-filter-btn');
+    existingCategoryBtns.forEach(btn => btn.remove());
+
+    // "カテゴリ:" ラベルを追加
+    const categoryLabel = document.createElement('span');
+    categoryLabel.className = 'category-filter-btn';
+    categoryLabel.textContent = 'カテゴリ:';
+    categoryLabel.style.cssText = 'margin-right: 4px; font-weight: 500; color: var(--notion-text-secondary);';
+    controlButtons.insertBefore(categoryLabel, controlButtons.firstChild);
+
+    // "全て" ボタンを追加
+    const allBtn = document.createElement('button');
+    allBtn.className = 'btn category-filter-btn';
+    allBtn.textContent = '全て';
+    allBtn.style.marginRight = '8px';
+    if (!categoryFilter) {
+        allBtn.style.background = 'var(--notion-blue)';
+        allBtn.style.color = 'white';
+        allBtn.style.borderColor = 'var(--notion-blue)';
+    }
+    allBtn.addEventListener('click', () => {
+        categoryFilter = null;
+        setupCategoryFilters();
+        updatePhotoGrid();
+    });
+    controlButtons.insertBefore(allBtn, document.getElementById('autoSelectBtn'));
+
+    // 各カテゴリのボタンを追加
+    categories.forEach(category => {
+        const btn = document.createElement('button');
+        btn.className = 'btn category-filter-btn';
+        btn.textContent = category;
+        btn.style.marginRight = '8px';
+
+        if (categoryFilter === category) {
+            btn.style.background = 'var(--notion-blue)';
+            btn.style.color = 'white';
+            btn.style.borderColor = 'var(--notion-blue)';
+        }
+
+        btn.addEventListener('click', () => {
+            categoryFilter = category;
+            setupCategoryFilters();
+            updatePhotoGrid();
+        });
+
+        controlButtons.insertBefore(btn, document.getElementById('autoSelectBtn'));
+    });
+}
+
+// 選択済み写真一覧モーダル
+function showSelectedPhotosModal() {
+    const selectedPhotos = currentPhotos.filter(p => selectedPhotoIds.has(p.id));
+
+    if (selectedPhotos.length === 0) {
+        showErrorModal('選択なし', 'まだ写真が選択されていません。');
+        return;
+    }
+
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 20px;
+        overflow-y: auto;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 1000px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+    `;
+
+    const thumbnailsHTML = selectedPhotos.map((photo, i) => {
+        const originalIndex = currentPhotos.indexOf(photo);
+        return `
+            <div style="position: relative; cursor: pointer;" data-index="${originalIndex}">
+                <img src="${photo.url}" alt="${photo.file_name}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 4px;">
+                <button class="remove-selected-btn" data-photo-id="${photo.id}" style="position: absolute; top: 4px; right: 4px; background: var(--notion-red); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 14px; line-height: 1; transition: background 0.15s;">×</button>
+                <div style="font-size: 11px; color: var(--notion-text-secondary); margin-top: 4px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${i + 1}</div>
+            </div>
+        `;
+    }).join('');
+
+    const maxSelections = currentGallery.max_selections || 30;
+
+    content.innerHTML = `
+        <h2 style="margin-top: 0; color: var(--notion-text); text-align: center;">📸 選択済み写真一覧</h2>
+        <p style="color: var(--notion-text-secondary); text-align: center; font-size: 16px; margin: 15px 0;">
+            <strong>${selectedPhotos.length}枚</strong> / ${maxSelections}枚 選択中
+        </p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; margin: 20px 0; max-height: 60vh; overflow-y: auto; border: 1px solid var(--notion-border); border-radius: 8px; padding: 15px;">
+            ${thumbnailsHTML}
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button id="clearAllSelectionsBtn" class="btn" style="flex: 1; background: var(--notion-red); color: white; border-color: var(--notion-red);">全て解除</button>
+            <button id="closeSelectedModalBtn" class="btn btn-primary" style="flex: 1;">閉じる</button>
+        </div>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+    // サムネイルクリックでライトボックス
+    content.querySelectorAll('[data-index]').forEach(el => {
+        el.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('remove-selected-btn')) {
+                const index = parseInt(el.dataset.index);
+                openLightbox(index);
+                document.body.removeChild(modal);
+            }
+        });
+    });
+
+    // 個別削除ボタン
+    content.querySelectorAll('.remove-selected-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const photoId = btn.dataset.photoId;
+            try {
+                await supabaseStorage.removeSelection(currentGallery.id, photoId);
+                selectedPhotoIds.delete(photoId);
+                updatePhotoGrid();
+                updateSelectionCount();
+
+                // モーダルを再描画
+                document.body.removeChild(modal);
+                showSelectedPhotosModal();
+            } catch (error) {
+                console.error('選択解除エラー:', error);
+                showErrorModal('選択解除エラー', '選択の解除中にエラーが発生しました。');
+            }
+        });
+    });
+
+    // 全て解除ボタン
+    document.getElementById('clearAllSelectionsBtn').addEventListener('click', async () => {
+        if (!confirm('選択中の写真を全て解除しますか？')) {
+            return;
+        }
+
+        try {
+            for (const photoId of selectedPhotoIds) {
+                await supabaseStorage.removeSelection(currentGallery.id, photoId);
+            }
+            selectedPhotoIds.clear();
+            updatePhotoGrid();
+            updateSelectionCount();
+            document.body.removeChild(modal);
+        } catch (error) {
+            console.error('全解除エラー:', error);
+            showErrorModal('全解除エラー', '選択の解除中にエラーが発生しました。');
+        }
+    });
+
+    // 閉じるボタン
+    document.getElementById('closeSelectedModalBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+
+    // 背景クリックで閉じる
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
 }
 
 async function submitSelection() {

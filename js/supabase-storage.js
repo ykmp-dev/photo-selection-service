@@ -138,7 +138,7 @@ class SupabasePhotoStorage {
     }
 
     // 写真をアップロード
-    async uploadPhoto(galleryId, file) {
+    async uploadPhoto(galleryId, file, metadata = {}) {
         try {
             // ファイル名を生成（UUID + 元のファイル名）
             const fileExt = file.name.split('.').pop();
@@ -166,7 +166,9 @@ class SupabasePhotoStorage {
                     gallery_id: galleryId,
                     file_name: file.name,
                     file_path: fileName,
-                    file_size: file.size
+                    file_size: file.size,
+                    rating: metadata.rating || 0,
+                    category: metadata.category || null
                 }])
                 .select()
                 .single();

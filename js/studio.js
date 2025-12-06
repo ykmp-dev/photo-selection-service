@@ -131,6 +131,7 @@ async function createGallery() {
     const galleryName = document.getElementById('galleryName').value.trim();
     const galleryPassword = document.getElementById('galleryPassword').value.trim();
     const maxSelections = parseInt(document.getElementById('maxSelections').value) || 30;
+    const photoCategory = document.getElementById('photoCategory').value.trim();
 
     if (!galleryName || selectedFiles.length === 0) {
         alert('ギャラリー名と写真を入力してください');
@@ -166,17 +167,41 @@ async function createGallery() {
             const file = selectedFiles[i];
             createBtn.textContent = `アップロード中... (${i + 1}/${totalFiles})`;
 
+            // EXIFメタデータからレーティングを抽出
+            let rating = 0;
+            try {
+                if (window.exifr) {
+                    const exifData = await exifr.parse(file, {
+                        xmp: true,
+                        iptc: true,
+                        ifd0: true,
+                        exif: true
+                    });
+
+                    // XMP Rating または IPTC Rating を取得
+                    rating = exifData?.Rating || exifData?.rating || 0;
+                    console.log(`${file.name} のレーティング:`, rating);
+                }
+            } catch (exifError) {
+                console.log(`${file.name} のEXIF読み取りエラー:`, exifError);
+                // エラーの場合は rating = 0 のまま続行
+            }
+
             // 画像を圧縮
             const compressedFile = await supabaseStorage.compressImage(file);
 
-            // Supabaseにアップロード
-            await supabaseStorage.uploadPhoto(gallery.id, compressedFile);
+            // Supabaseにアップロード（メタデータ付き）
+            await supabaseStorage.uploadPhoto(gallery.id, compressedFile, {
+                rating: rating,
+                category: photoCategory || null
+            });
         }
 
         // フォームをリセット
         document.getElementById('galleryName').value = '';
         document.getElementById('galleryPassword').value = '';
         document.getElementById('maxSelections').value = '30';
+        document.getElementById('photoCategory').value = '';
         document.getElementById('fileInput').value = '';
         selectedFiles = [];
         updatePreview();
