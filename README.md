@@ -167,15 +167,15 @@ MIT
 
 1. Supabaseダッシュボードにログイン
 2. **SQL Editor** を開く
-3. **`supabase-schema-updates.sql` の内容を全てコピー**
+3. **`supabase-reset-and-setup.sql` の内容を全てコピー**
 4. SQL Editorに貼り付けて **Run** をクリック
 
 ```bash
 # SQLファイルの内容を確認
-cat supabase-schema-updates.sql
+cat supabase-reset-and-setup.sql
 ```
 
-成功すると「✅ データベーススキーマ作成完了！」のメッセージが表示されます。
+成功すると「✅ データベース完全セットアップ完了！」のメッセージが表示されます。
 
 詳細は **[SETUP.md](./SETUP.md)** を参照してください。
 
