@@ -6,24 +6,7 @@
 -- STEP 1: クリーンアップ（既存データ削除）
 -- ==========================================
 
--- 既存のポリシーを削除
-DROP POLICY IF EXISTS "Allow public insert to galleries" ON galleries;
-DROP POLICY IF EXISTS "Allow public read galleries" ON galleries;
-DROP POLICY IF EXISTS "Allow public update galleries" ON galleries;
-DROP POLICY IF EXISTS "Allow public delete galleries" ON galleries;
-DROP POLICY IF EXISTS "Allow public insert to photos" ON photos;
-DROP POLICY IF EXISTS "Allow public read photos" ON photos;
-DROP POLICY IF EXISTS "Allow public delete photos" ON photos;
-DROP POLICY IF EXISTS "Allow public insert to selections" ON selections;
-DROP POLICY IF EXISTS "Allow public read selections" ON selections;
-DROP POLICY IF EXISTS "Allow public delete selections" ON selections;
-DROP POLICY IF EXISTS "Allow public insert to download_history" ON download_history;
-DROP POLICY IF EXISTS "Allow public read download_history" ON download_history;
-DROP POLICY IF EXISTS "Allow public insert to download_passes" ON download_passes;
-DROP POLICY IF EXISTS "Allow public read download_passes" ON download_passes;
-DROP POLICY IF EXISTS "Allow public update download_passes" ON download_passes;
-
--- 既存のテーブルを削除
+-- 既存のテーブルを削除（CASCADEでポリシーも自動削除）
 DROP TABLE IF EXISTS download_passes CASCADE;
 DROP TABLE IF EXISTS download_history CASCADE;
 DROP TABLE IF EXISTS selections CASCADE;
