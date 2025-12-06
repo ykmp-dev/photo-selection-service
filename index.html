@@ -15,8 +15,9 @@
         </header>
 
         <main>
-            <section class="upload-section">
-                <h2>新しいギャラリーを作成</h2>
+            <!-- ステップ1: ギャラリー基本情報 -->
+            <section id="createSection" class="upload-section">
+                <h2>ステップ1: ギャラリー基本情報</h2>
                 <div class="form-group">
                     <label for="galleryName">ギャラリー名（お客様名）</label>
                     <input type="text" id="galleryName" placeholder="例：田中様 七五三撮影" required>
@@ -36,6 +37,26 @@
                     <small style="color: #666; display: block; margin-top: 5px;">お客様が選択できる写真の枚数を指定してください（1-100枚）</small>
                 </div>
 
+                <button id="createGalleryBtn" class="btn btn-success btn-large">
+                    ギャラリーを作成
+                </button>
+            </section>
+
+            <!-- ステップ2: 写真追加（作成後に表示） -->
+            <section id="uploadSection" class="upload-section" style="display: none;">
+                <h2>ステップ2: 写真を追加</h2>
+
+                <div style="background: var(--notion-bg-secondary); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="margin-top: 0; font-size: 18px; color: var(--notion-text);">📋 現在のギャラリー</h3>
+                    <div id="currentGalleryInfo"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="photoCategory">カテゴリ名</label>
+                    <input type="text" id="photoCategory" placeholder="例：集合写真、家族写真、ポートレート" required>
+                    <small style="color: #666; display: block; margin-top: 5px;">このアップロードで追加する写真のカテゴリを指定してください</small>
+                </div>
+
                 <div class="upload-area" id="uploadArea">
                     <div class="upload-icon">📁</div>
                     <p>写真をドラッグ&ドロップ</p>
@@ -46,9 +67,14 @@
 
                 <div id="previewArea" class="preview-area"></div>
 
-                <button id="createGallery" class="btn btn-success btn-large" disabled>
-                    ギャラリーを作成
-                </button>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button id="addPhotosBtn" class="btn btn-primary btn-large" disabled style="flex: 1;">
+                        このカテゴリの写真を追加
+                    </button>
+                    <button id="finalizeGalleryBtn" class="btn btn-success btn-large" style="flex: 1;">
+                        完了してURLを取得
+                    </button>
+                </div>
             </section>
 
             <section class="gallery-list-section">
