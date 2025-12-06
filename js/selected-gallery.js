@@ -155,24 +155,84 @@ async function downloadSinglePhoto() {
     const photo = selectedPhotos[currentPhotoIndex];
 
     try {
-        const response = await fetch(photo.url);
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
+        // モバイルかどうかを判定
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = photo.file_name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        if (isMobile) {
+            // モバイル: 新しいタブで画像を開く（長押し保存可能）
+            const newTab = window.open(photo.url, '_blank');
 
-        // 短いメッセージ表示
-        showToast('✅ ダウンロード開始');
+            if (newTab) {
+                showToast('📸 画像を開きました\n長押しで写真アプリに保存できます', 3000);
+            } else {
+                // ポップアップブロックされた場合
+                showImageSaveModal(photo);
+            }
+        } else {
+            // デスクトップ: 通常のダウンロード
+            const response = await fetch(photo.url);
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = photo.file_name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showToast('✅ ダウンロード開始');
+        }
     } catch (error) {
-        console.error('ダウンロードエラー:', error);
-        showToast('❌ ダウンロードに失敗しました');
+        console.error('保存エラー:', error);
+        showToast('❌ 保存に失敗しました');
     }
+}
+
+// モバイル用の画像保存モーダル（ポップアップブロック対策）
+function showImageSaveModal(photo) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.95);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10002;
+        padding: 20px;
+    `;
+
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; padding: 20px; max-width: 90%; max-height: 80vh; overflow: auto; text-align: center;">
+            <h2 style="margin: 0 0 15px 0; font-size: 18px; color: var(--notion-text);">写真を保存</h2>
+            <img src="${photo.url}" style="max-width: 100%; border-radius: 8px; margin-bottom: 15px;">
+            <p style="color: var(--notion-text-secondary); font-size: 14px; margin: 15px 0;">
+                📸 画像を長押しして<br>
+                「写真に追加」または「画像を保存」を選択してください
+            </p>
+            <button id="closeSaveModal" class="btn btn-primary" style="padding: 12px 30px; margin-top: 10px;">
+                閉じる
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById('closeSaveModal').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
 }
 
 function setupDownloadAll() {
@@ -237,14 +297,14 @@ function setupDownloadAll() {
     });
 }
 
-function showToast(message) {
+function showToast(message, duration = 2000) {
     const toast = document.createElement('div');
     toast.style.cssText = `
         position: fixed;
         bottom: 30px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(0,0,0,0.8);
+        background: rgba(0,0,0,0.9);
         color: white;
         padding: 15px 30px;
         border-radius: 8px;
@@ -252,6 +312,9 @@ function showToast(message) {
         font-weight: 600;
         z-index: 10001;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        text-align: center;
+        white-space: pre-line;
+        max-width: 80%;
     `;
     toast.textContent = message;
     document.body.appendChild(toast);
@@ -260,5 +323,5 @@ function showToast(message) {
         if (toast.parentNode) {
             document.body.removeChild(toast);
         }
-    }, 2000);
+    }, duration);
 }
