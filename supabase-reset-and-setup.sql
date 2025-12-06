@@ -49,10 +49,13 @@ CREATE TABLE photos (
     file_name TEXT NOT NULL,
     file_path TEXT NOT NULL,
     file_size BIGINT,
+    rating INTEGER DEFAULT 0,
+    category TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX idx_photos_gallery_id ON photos(gallery_id);
+CREATE INDEX idx_photos_rating ON photos(rating);
 
 -- 3. selectionsテーブル
 CREATE TABLE selections (

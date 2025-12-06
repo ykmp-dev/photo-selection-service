@@ -317,17 +317,22 @@ header h1 {
     backdrop-filter: blur(10px);
     border-top: 1px solid var(--notion-border);
     z-index: 1000;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .selection-info {
     font-size: 16px;
     font-weight: 500;
     color: var(--notion-text);
+    flex: 1;
+    min-width: 300px;
 }
 
 .control-buttons {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
 /* 写真グリッド */
@@ -532,6 +537,21 @@ header h1 {
         gap: 12px;
         text-align: center;
         padding: 12px;
+    }
+
+    .selection-info {
+        min-width: 100%;
+    }
+
+    .control-buttons {
+        width: 100%;
+    }
+
+    .control-buttons .btn {
+        flex: 1;
+        min-width: 120px;
+        font-size: 12px;
+        padding: 8px;
     }
 
     .gallery-item {
