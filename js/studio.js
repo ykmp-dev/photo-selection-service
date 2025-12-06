@@ -654,12 +654,17 @@ async function loadGalleries() {
             const passwordDisplay = gallery.decryptedPassword ?
                 `<div style="margin-top: 5px; font-size: 0.9em; color: #667eea;">パスワード: <strong>${gallery.decryptedPassword}</strong></div>` : '';
 
+            // 全カット納品モードか通常モードかで表示を変更
+            const deliveryInfo = gallery.all_photos_delivery
+                ? '🎁 全カット納品'
+                : `選択済み: ${selectedPhotoIds.length}/${gallery.max_selections || 30}枚`;
+
             item.innerHTML = `
                 <div class="gallery-info">
                     <h3>${hasPassword} ${gallery.name}</h3>
                     <div class="gallery-meta">
                         写真: ${photoCount}枚 |
-                        選択済み: ${selectedPhotoIds.length}/${gallery.max_selections || 30}枚 |
+                        ${deliveryInfo} |
                         作成日: ${new Date(gallery.created_at).toLocaleDateString('ja-JP')}
                     </div>
                     ${passwordDisplay}
