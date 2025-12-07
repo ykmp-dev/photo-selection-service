@@ -110,9 +110,14 @@ const SUPABASE_ANON_KEY = 'あなたのanon public key';
 3. **Save** をクリック
 4. 数分待つとURLが表示されます
 
+**デプロイ先URL:**
+- 管理画面: `https://ykmp-dev.github.io/photo-selection-service/`
+- お客様画面: `https://ykmp-dev.github.io/photo-selection-service/client.html?gallery=xxx`
+- 選択済みギャラリー: `https://ykmp-dev.github.io/photo-selection-service/selected-gallery.html?gallery=xxx`
+
 ### 動作確認
 
-1. 管理画面 (`admin.html`) でギャラリーを作成
+1. 管理画面 (`https://ykmp-dev.github.io/photo-selection-service/`) でギャラリーを作成
 2. 写真をアップロード
 3. お客様用URL (`client.html?gallery=xxx`) で動作確認
 
