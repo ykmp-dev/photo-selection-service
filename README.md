@@ -2,6 +2,12 @@
 
 フォトスタジオ向けの写真選択Webサービスです。撮影した写真をお客様と共有し、お気に入りの写真を選んでもらうことができます。
 
+## 🌐 アクセスURL (GitHub Pages)
+
+- **管理画面（スタジオ用）**: https://ykmp-dev.github.io/photo-selection-service/
+- **お客様選択画面**: https://ykmp-dev.github.io/photo-selection-service/client.html?gallery=xxx
+- **選択済みギャラリー**: https://ykmp-dev.github.io/photo-selection-service/selected-gallery.html?gallery=xxx
+
 ## 🚀 クイックスタート
 
 ### 必須: データベースセットアップ
